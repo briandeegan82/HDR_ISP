@@ -8,9 +8,9 @@ Author: 10xEngineers Pvt Ltd
 
 from infinite_isp import InfiniteISP
 
-CONFIG_PATH = "./config/configs.yml"
-RAW_DATA = "./in_frames/normal"
-FILENAME = None
+CONFIG_PATH = "./config/svs_cam.yml"
+RAW_DATA = "./in_frames/hdr_mode/"
+FILENAME = 'frame_0000.raw'
 
 if __name__ == "__main__":
 

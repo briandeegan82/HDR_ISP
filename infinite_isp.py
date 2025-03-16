@@ -20,6 +20,7 @@ from modules.dead_pixel_correction.dead_pixel_correction import (
 from modules.black_level_correction.black_level_correction import (
     BlackLevelCorrection as BLC,
 )
+from modules.pwc_generation.pwc_generation import (PiecewiseCurve as PWC)
 from modules.oecf.oecf import OECF
 from modules.digital_gain.digital_gain import DigitalGain as DG
 from modules.lens_shading_correction.lens_shading_correction import (
@@ -78,6 +79,7 @@ class InfiniteISP:
 
             # Get isp module params
             self.parm_dpc = c_yaml["dead_pixel_correction"]
+            self.parm_cmpd = c_yaml["companding"]
             self.parm_dga = c_yaml["digital_gain"]
             self.parm_lsc = c_yaml["lens_shading_correction"]
             self.parm_bnr = c_yaml["bayer_noise_reduction"]
@@ -124,7 +126,7 @@ class InfiniteISP:
         # Load Raw
         if path_object.suffix == ".raw":
             if bit_depth > 8:
-                self.raw = np.fromfile(raw_path, dtype=np.uint16).reshape(
+                self.raw = np.fromfile(raw_path, dtype='>u2').reshape(
                     (height, width)
                 )
             else:
@@ -158,8 +160,13 @@ class InfiniteISP:
         blc_raw = blc.execute()
 
         # =====================================================================
+        # decompanding
+        cmpd = PWC(blc_raw, self.platform, self.sensor_info, self.parm_cmpd)
+        cmpd_raw = cmpd.execute()
+
+        # =====================================================================
         # OECF
-        oecf = OECF(blc_raw, self.platform, self.sensor_info, self.parm_oec)
+        oecf = OECF(cmpd_raw, self.platform, self.sensor_info, self.parm_oec)
         oecf_raw = oecf.execute()
 
         # =====================================================================
