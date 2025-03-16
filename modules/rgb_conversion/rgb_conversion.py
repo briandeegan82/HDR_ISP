@@ -29,7 +29,7 @@ class RGBConversion:
         self.parm_rgb = parm_rgb
         self.enable = self.parm_rgb["is_enable"]
         self.is_save = self.parm_rgb["is_save"]
-        self.bit_depth = sensor_info["bit_depth"]
+        self.bit_depth = sensor_info["output_bit_depth"]
         self.conv_std = parm_csc["conv_standard"]
         self.yuv_img = img
         self.yuv2rgb_mat = None

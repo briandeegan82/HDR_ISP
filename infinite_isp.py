@@ -31,6 +31,7 @@ from modules.bayer_noise_reduction.bayer_noise_reduction import (
 )
 from modules.auto_white_balance.auto_white_balance import AutoWhiteBalance as AWB
 from modules.white_balance.white_balance import WhiteBalance as WB
+from modules.hdr_durant.hdr_durant_fast import HDRDurandFast as HDR
 from modules.demosaic.demosaic import Demosaic
 from modules.color_correction_matrix.color_correction_matrix import (
     ColorCorrectionMatrix as CCM,
@@ -91,6 +92,7 @@ class InfiniteISP:
             self.parm_ae = c_yaml["auto_exposure"]
             self.parm_ccm = c_yaml["color_correction_matrix"]
             self.parm_gmc = c_yaml["gamma_correction"]
+            self.param_durant = c_yaml["hdr_durant"]
             self.parm_csc = c_yaml["color_space_conversion"]
             self.parm_cse = c_yaml["color_saturation_enhancement"]
             self.parm_ldci = c_yaml["ldci"]
@@ -195,8 +197,13 @@ class InfiniteISP:
         wb_raw = wbc.execute()
 
         # =====================================================================
+        # HDR tone mapping
+        hdr = HDR(wb_raw, self.platform, self.sensor_info, self.param_durant)
+        hdr_img = hdr.execute()
+
+        # =====================================================================
         # CFA demosaicing
-        cfa_inter = Demosaic(wb_raw, self.platform, self.sensor_info, self.parm_dem)
+        cfa_inter = Demosaic(hdr_img, self.platform, self.sensor_info, self.parm_dem)
         demos_img = cfa_inter.execute()
 
         # =====================================================================
