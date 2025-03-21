@@ -16,7 +16,7 @@ class Demosaic:
     def __init__(self, img, platform, sensor_info, parm_dga):
         self.img = img
         self.bayer = sensor_info["bayer_pattern"]
-        self.bit_depth = sensor_info["bit_depth"]
+        self.bit_depth = sensor_info["output_bit_depth"]
         self.is_save = parm_dga["is_save"]
         self.sensor_info = sensor_info
         self.platform = platform

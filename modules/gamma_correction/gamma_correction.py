@@ -20,34 +20,26 @@ class GammaCorrection:
         self.img = img
         self.enable = parm_gmm["is_enable"]
         self.sensor_info = sensor_info
-        self.bit_depth = sensor_info["bit_depth"]
+        self.output_bit_depth = sensor_info["output_bit_depth"]
         self.parm_gmm = parm_gmm
         self.is_save = parm_gmm["is_save"]
         self.platform = platform
 
-    def generate_gamma_8bit_lut(self):
+    def generate_gamma_lut(self, bit_depth):
         """
         Generates Gamma LUT for 8bit Image
         """
-        lut = np.linspace(0, 255, 256)
-        lut = np.uint8(np.round(255 * ((lut / 255) ** (1 / 2.2))))
+        max_val = 2**bit_depth - 1
+        lut = np.arange(0, max_val + 1)
+        lut = np.uint32(np.round(max_val * ((lut / max_val) ** (1 / 2.2))))
         return lut
 
     def apply_gamma(self):
         """
         Apply Gamma LUT on n-bit Image
         """
-        # load gamma table
-        if self.bit_depth == 8:
-            lut = np.uint16(np.array(self.parm_gmm["gamma_lut_8"]))
-        elif self.bit_depth == 10:
-            lut = np.uint16(np.array(self.parm_gmm["gamma_lut_10"]))
-        elif self.bit_depth == 12:
-            lut = np.uint16(np.array(self.parm_gmm["gamma_lut_12"]))
-        elif self.bit_depth == 14:
-            lut = np.uint16(np.array(self.parm_gmm["gamma_lut_14"]))
-        else:
-            print("LUT is not available for the given bit depth.")
+        # generate LUT
+        lut = self.generate_gamma_lut(self.output_bit_depth).T
 
         # apply LUT
         gamma_img = lut[self.img]
@@ -63,7 +55,7 @@ class GammaCorrection:
                 self.img,
                 "Out_gamma_correction_",
                 self.platform,
-                self.sensor_info["bit_depth"],
+                self.sensor_info["output_bit_depth"],
                 self.sensor_info["bayer_pattern"],
             )
 

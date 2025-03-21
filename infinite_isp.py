@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 import rawpy
+from matplotlib import pyplot as plt
 
 import util.utils as util
 
@@ -31,7 +32,7 @@ from modules.bayer_noise_reduction.bayer_noise_reduction import (
 )
 from modules.auto_white_balance.auto_white_balance import AutoWhiteBalance as AWB
 from modules.white_balance.white_balance import WhiteBalance as WB
-from modules.hdr_durant.hdr_durant_fast import HDRDurandFast as HDR
+from modules.hdr_durand.hdr_durand_fast import HDRDurandToneMapping as HDR
 from modules.demosaic.demosaic import Demosaic
 from modules.color_correction_matrix.color_correction_matrix import (
     ColorCorrectionMatrix as CCM,
@@ -92,7 +93,7 @@ class InfiniteISP:
             self.parm_ae = c_yaml["auto_exposure"]
             self.parm_ccm = c_yaml["color_correction_matrix"]
             self.parm_gmc = c_yaml["gamma_correction"]
-            self.param_durant = c_yaml["hdr_durant"]
+            self.param_durand = c_yaml["hdr_durand"]
             self.parm_csc = c_yaml["color_space_conversion"]
             self.parm_cse = c_yaml["color_saturation_enhancement"]
             self.parm_ldci = c_yaml["ldci"]
@@ -161,10 +162,13 @@ class InfiniteISP:
         blc = BLC(dpc_raw, self.platform, self.sensor_info, self.parm_blc)
         blc_raw = blc.execute()
 
+
         # =====================================================================
         # decompanding
         cmpd = PWC(blc_raw, self.platform, self.sensor_info, self.parm_cmpd)
         cmpd_raw = cmpd.execute()
+
+
 
         # =====================================================================
         # OECF
@@ -173,18 +177,25 @@ class InfiniteISP:
 
         # =====================================================================
         # Digital Gain
-        dga = DG(oecf_raw, self.platform, self.sensor_info, self.parm_dga)
-        dga_raw, self.dga_current_gain = dga.execute()
+        #dga = DG(oecf_raw, self.platform, self.sensor_info, self.parm_dga)
+        #dga_raw, self.dga_current_gain = dga.execute()
+
+        #bypassing for now
+        dga_raw = oecf_raw
+
 
         # =====================================================================
         # Lens shading correction
         lsc = LSC(dga_raw, self.platform, self.sensor_info, self.parm_lsc)
         lsc_raw = lsc.execute()
 
+
+
         # =====================================================================
         # Bayer noise reduction
         bnr = BNR(lsc_raw, self.sensor_info, self.parm_bnr, self.platform)
         bnr_raw = bnr.execute()
+
 
         # =====================================================================
         # Auto White Balance
@@ -196,35 +207,47 @@ class InfiniteISP:
         wbc = WB(bnr_raw, self.platform, self.sensor_info, self.parm_wbc)
         wb_raw = wbc.execute()
 
+
+
         # =====================================================================
         # HDR tone mapping
-        hdr = HDR(wb_raw, self.platform, self.sensor_info, self.param_durant)
-        hdr_img = hdr.execute()
+        hdr = HDR(wb_raw, self.platform, self.sensor_info, self.param_durand)
+        hdr_raw = hdr.execute()
+        print("HDR Image mean: ", np.mean(hdr_raw))
+
+
 
         # =====================================================================
         # CFA demosaicing
-        cfa_inter = Demosaic(hdr_img, self.platform, self.sensor_info, self.parm_dem)
+        cfa_inter = Demosaic(hdr_raw, self.platform, self.sensor_info, self.parm_dem)
         demos_img = cfa_inter.execute()
+        print("Demosaiced Image mean: ", np.mean(demos_img))
+
+
 
         # =====================================================================
         # Color correction matrix
         ccm = CCM(demos_img, self.platform, self.sensor_info, self.parm_ccm)
         ccm_img = ccm.execute()
+        print("CCM Image mean: ", np.mean(ccm_img))
 
         # =====================================================================
         # Gamma
         gmc = GC(ccm_img, self.platform, self.sensor_info, self.parm_gmc)
         gamma_raw = gmc.execute()
+        print("Gamma Image mean: ", np.mean(gamma_raw))
 
         # =====================================================================
         # Auto-Exposure
         aef = AE(gamma_raw, self.sensor_info, self.parm_ae)
         self.ae_feedback = aef.execute()
+        print("AE Feedback: ", self.ae_feedback)
 
         # =====================================================================
         # Color space conversion
         csc = CSC(gamma_raw, self.platform, self.sensor_info, self.parm_csc, self.parm_cse )
         csc_img = csc.execute()
+        print("CSC Image mean: ", np.mean(csc_img))
 
         # =====================================================================
         # Local Dynamic Contrast Improvement

@@ -1,5 +1,24 @@
-# Work in progress
-HDR version of infinite-ISP by 10X engineering
+# HDR-ISP
+This project is based on Infinite-ISP bu 10X Engineering, which in turn is based on FastOpenISP and OpenISP. Really standing on the shoulders of giants here.
+
+## Modifications
+The main modifications compared to Infinite-ISP are:
+- Added a decompanding function to linearize companded data
+- Implemented Durand's HDR tone mapping algorithm
+- Modified the bit depth of the ISP pipeline
+
+As of now, this is very much a work in progress. Features to be added include, but are not limited to:
+- HDR multicapture merge
+- Lens shading correction
+- Code optimizations
+
+## Instructions
+To run, execute the file "isp_pipeline.py"
+
+The ISP parameters are defined in the config .yml files 
+
+### more to follow
+
 # Infinite-ISP
 Infinite-ISP is a full-stack ISP development platform - from algorithm development to RTL design, FPGA/ASIC implementation, and associated firmware, tools, etc. It offers a unified platform that empowers ISP developers to accelerate ISP innovation. It includes a complete collection of camera pipeline modules written in Python, an FPGA bitstream & the associated Firmware for the implementation of the pipeline on the Kria KV260 development board, and lastly, a stand-alone Python-based Tuning Tool application for the pipeline. The main components of the Infinite-ISP project are listed below:
 

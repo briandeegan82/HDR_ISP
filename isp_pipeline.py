@@ -10,7 +10,7 @@ from infinite_isp import InfiniteISP
 
 CONFIG_PATH = "./config/svs_cam.yml"
 RAW_DATA = "./in_frames/hdr_mode/"
-FILENAME = 'RV.raw'
+FILENAME = 'FV.raw'
 
 if __name__ == "__main__":
 

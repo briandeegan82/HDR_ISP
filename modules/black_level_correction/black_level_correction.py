@@ -129,7 +129,7 @@ class BlackLevelCorrection:
                     raw[1::2, 1::2] / (gr_sat - gr_offset) * ((2**bpp) - 1)
                 )
 
-        raw_blc = np.uint16(np.clip(raw, 0, (2**bpp) - 1))
+        raw_blc = np.uint32(np.clip(raw, 0, (2**bpp) - 1))
         return raw_blc
 
     def save(self):

@@ -35,7 +35,7 @@ class JointBF:
         in_img = self.img
         bayer_pattern = self.sensor_info["bayer_pattern"]
         width, height = self.sensor_info["width"], self.sensor_info["height"]
-        bit_depth = self.sensor_info["bit_depth"]
+        bit_depth = self.sensor_info["hdr_bit_depth"]
 
         # extract BNR parameters
         filt_size = self.parm_bnr["filter_window"]
@@ -228,8 +228,8 @@ class JointBF:
                 0 : np.size(out_img_b, 0) : 1, 0 : np.size(out_img_b, 1) : 1
             ]
 
-        # convert normalized image to 12-bit range
-        bnr_out_img = np.uint16(np.clip(bnr_out_img, 0, 1) * ((2**bit_depth) - 1))
+        # convert normalized image to 32-bit range
+        bnr_out_img = np.uint32(np.clip(bnr_out_img, 0, 1) * ((2**bit_depth) - 1))
         return bnr_out_img
 
     def gauss_kern_raw(self, kern, std_dev, stride):

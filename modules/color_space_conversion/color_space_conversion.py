@@ -29,7 +29,7 @@ class ColorSpaceConversion:
         self.platform = platform
         self.sensor_info = sensor_info
         self.parm_csc = parm_csc
-        self.bit_depth = sensor_info["bit_depth"]
+        self.bit_depth = sensor_info["output_bit_depth"]
         self.conv_std = self.parm_csc["conv_standard"]
         self.rgb2yuv_mat = None
         self.yuv_img = None

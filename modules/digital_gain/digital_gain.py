@@ -65,7 +65,7 @@ class DigitalGain:
             print("   - DG  - Applied Gain = ", self.gains_array[self.current_gain])
 
         # np.uint16 bit to contain the bpp bit raw
-        self.img = np.uint16(np.clip(self.img, 0, ((2**bpp) - 1)))
+        self.img = np.uint32(np.clip(self.img, 0, ((2**bpp) - 1)))
         return self.img
 
     def save(self):

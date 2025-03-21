@@ -29,7 +29,7 @@ class WhiteBalance:
         self.sensor_info = sensor_info
         self.parm_wbc = parm_wbc
         self.bayer = self.sensor_info["bayer_pattern"]
-        self.bpp = self.sensor_info["bit_depth"]
+        self.bpp = self.sensor_info["hdr_bit_depth"]
         self.raw = None
 
     def apply_wb_parameters(self):
@@ -59,7 +59,7 @@ class WhiteBalance:
             self.raw[1::2, ::2] = self.raw[1::2, ::2] * redgain
             self.raw[::2, 1::2] = self.raw[::2, 1::2] * bluegain
 
-        raw_whitebal = np.uint16(np.clip(self.raw, 0, (2**self.bpp) - 1))
+        raw_whitebal = np.uint32(np.clip(self.raw, 0, (2**self.bpp) - 1))
 
         return raw_whitebal
 
