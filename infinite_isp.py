@@ -168,8 +168,6 @@ class InfiniteISP:
         cmpd = PWC(blc_raw, self.platform, self.sensor_info, self.parm_cmpd)
         cmpd_raw = cmpd.execute()
 
-
-
         # =====================================================================
         # OECF
         oecf = OECF(cmpd_raw, self.platform, self.sensor_info, self.parm_oec)
@@ -177,11 +175,9 @@ class InfiniteISP:
 
         # =====================================================================
         # Digital Gain
-        #dga = DG(oecf_raw, self.platform, self.sensor_info, self.parm_dga)
-        #dga_raw, self.dga_current_gain = dga.execute()
+        dga = DG(cmpd_raw, self.platform, self.sensor_info, self.parm_dga)
+        dga_raw, self.dga_current_gain = dga.execute()
 
-        #bypassing for now
-        dga_raw = oecf_raw
 
 
         # =====================================================================

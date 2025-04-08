@@ -36,7 +36,7 @@ class DigitalGain:
         """
 
         # get desired param from config
-        bpp = self.sensor_info["bit_depth"]
+        bpp = self.sensor_info["output_bit_depth"]
         # dg = self.param_dga['dg_gain']
 
         # converting to float image

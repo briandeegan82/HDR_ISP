@@ -8,12 +8,12 @@ platform:
 
 sensor_info:
   bayer_pattern: "gbrg"
-  range: 65536
+  #range: 65536
   hdr_bit_depth: 24
   bit_depth: 12
   width: 1920
   height: 1536
-  output_bit_depth: 8
+  output_bit_depth: 16
   sensor: "SVS"
   endian_type: "ieee-be"
   data_format: "uint32"
@@ -49,7 +49,7 @@ dead_pixel_correction:
   is_save: false
 
 black_level_correction:
-  is_enable: true
+  is_enable: false
   r_offset: 0
   gr_offset: 0
   gb_offset: 0
@@ -70,12 +70,12 @@ oecf:
 
 digital_gain:
   is_debug: true
-  is_auto: true
+  is_auto: false
   is_enable: true
   # Array of pre-define Gains
-  gain_array: [1, 2, 4, 6, 8, 10, 12, 16, 32, 64]
+  gain_array: [0.25, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 32, 64]
   # Index of default gain
-  current_gain: 1
+  current_gain: 0
   ae_feedback: 0
   is_save: false
 
@@ -125,9 +125,6 @@ color_correction_matrix:
 
 gamma_correction:
   is_enable: true
-
-  
-
   is_save: false
 
 auto_exposure:

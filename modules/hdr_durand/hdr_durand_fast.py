@@ -10,6 +10,7 @@ class HDRDurandToneMapping:
     
     def __init__(self, img, platform, sensor_info, params):
         self.img = img.copy()
+        self.is_enable = params.get("is_enable", True)
         self.is_save = params.get("is_save", False)
         self.is_debug = params.get("is_debug", False)
         self.sigma_space = params.get("sigma_space", 2.0)
@@ -84,9 +85,12 @@ class HDRDurandToneMapping:
                               self.platform, self.sensor_info["bit_depth"], self.sensor_info["bayer_pattern"])
     
     def execute(self):
-        print("Executing HDR Durand Tone Mapping...")
-        start = time.time()
-        self.img = self.apply_tone_mapping()
-        print(f"Execution time: {time.time() - start:.3f}s")
+        if self.is_enable is True:
+            print("Executing HDR Durand Tone Mapping...")
+            start = time.time()
+            self.img = self.apply_tone_mapping()
+            print(f"Execution time: {time.time() - start:.3f}s")
+            
         self.save()
         return self.img
+        
