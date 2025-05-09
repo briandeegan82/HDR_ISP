@@ -11,6 +11,7 @@ import numpy as np
 import yaml
 import rawpy
 from matplotlib import pyplot as plt
+import tifffile as tiff
 
 import util.utils as util
 
@@ -138,6 +139,14 @@ class InfiniteISP:
                     .reshape((height, width))
                     .astype(np.uint16)
                 )
+        elif path_object.suffix == ".tiff":
+            # Load tiff file
+            img = tiff.imread(raw_path)
+            print("Image shape: ", img.shape)
+            if img.ndim == 3:
+                self.raw = img[:, :, 0]
+            else:
+                self.raw = img
         else:
             img = rawpy.imread(raw_path)
             self.raw = img.raw_image

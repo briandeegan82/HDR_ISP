@@ -8,9 +8,9 @@ Author: 10xEngineers Pvt Ltd
 
 from infinite_isp import InfiniteISP
 
-CONFIG_PATH = "./config/svs_cam.yml"
+CONFIG_PATH = "./config/samsung.yml"
 RAW_DATA = "./in_frames/hdr_mode/"
-FILENAME = 'frame_0111.raw'
+FILENAME = 'Samsung1H1RAWexample.tiff'
 
 if __name__ == "__main__":
 
