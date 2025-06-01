@@ -11,7 +11,159 @@ import warnings
 import numpy as np
 from scipy import ndimage
 from tqdm import tqdm
+from scipy.ndimage import convolve
+import cv2
+import cv2.ximgproc
 
+def pad_reflect_numba(img, pad_len):
+    """Numba-compatible reflect padding implementation"""
+    h, w = img.shape
+    padded = np.zeros((h + 2*pad_len, w + 2*pad_len), dtype=img.dtype)
+    
+    # Copy original image
+    padded[pad_len:pad_len+h, pad_len:pad_len+w] = img
+    
+    # Pad top and bottom
+    for i in range(pad_len):
+        padded[i, pad_len:pad_len+w] = img[pad_len-i-1, :]  # Top
+        padded[pad_len+h+i, pad_len:pad_len+w] = img[h-i-1, :]  # Bottom
+    
+    # Pad left and right
+    for j in range(pad_len):
+        padded[:, j] = padded[:, 2*pad_len-j-1]  # Left
+        padded[:, pad_len+w+j] = padded[:, pad_len+w-j-1]  # Right
+    
+    return padded
+
+def gauss_kern_raw_numba(kern, std_dev, stride):
+    """Numba-accelerated Gaussian kernel generation"""
+    if kern % 2 == 0:
+        kern = kern + 1
+    if kern <= 0:
+        kern = 3
+
+    out_kern = np.zeros((kern, kern), dtype=np.float32)
+    center = (kern - 1) / 2
+    
+    for i in range(kern):
+        for j in range(kern):
+            x = stride * (i - center)
+            y = stride * (j - center)
+            out_kern[i, j] = np.exp(-1 * (x*x + y*y) / (2 * (std_dev**2)))
+    
+    out_kern /= np.sum(out_kern)
+    return out_kern
+
+def gauss_kern_raw_numpy(kern, std_dev, stride):
+    """Pure NumPy Gaussian kernel generation (no Numba)"""
+    if kern % 2 == 0:
+        kern = kern + 1
+    if kern <= 0:
+        kern = 3
+    center = (kern - 1) / 2
+    x = np.arange(kern) - center
+    y = np.arange(kern) - center
+    xx, yy = np.meshgrid(x, y)
+    xx = stride * xx
+    yy = stride * yy
+    out_kern = np.exp(-1 * (xx**2 + yy**2) / (2 * (std_dev**2)))
+    out_kern /= np.sum(out_kern)
+    return out_kern
+
+def fast_joint_bilateral_filter_numba(in_img, guide_img, s_kern, stddev_r, spatial_kern):
+    """Numba-accelerated joint bilateral filtering with improved performance"""
+    height, width = in_img.shape
+    pad_len = int((spatial_kern - 1) / 2)
+    
+    # Pre-compute spatial weights
+    spatial_weights = s_kern.astype(np.float32)
+    
+    # Pre-compute range weight denominator
+    range_weight_denom = -0.5 / (stddev_r * stddev_r)
+    
+    # Pre-allocate output array
+    filt_out = np.zeros_like(in_img)
+    
+    # Pad images once
+    in_img_ext = pad_reflect_numba(in_img, pad_len)
+    guide_img_ext = pad_reflect_numba(guide_img, pad_len)
+    
+    # Process in blocks for better cache locality
+    block_size = 256  # Increased block size for better cache utilization
+    
+    for block_i in range(0, height, block_size):
+        for block_j in range(0, width, block_size):
+            # Calculate block boundaries
+            end_i = min(block_i + block_size, height)
+            end_j = min(block_j + block_size, width)
+            
+            # Get block slices
+            block_in = in_img_ext[block_i:end_i+spatial_kern-1, block_j:end_j+spatial_kern-1]
+            block_guide = guide_img_ext[block_i:end_i+spatial_kern-1, block_j:end_j+spatial_kern-1]
+            block_center = guide_img[block_i:end_i, block_j:end_j]
+            
+            # Process each pixel in the block
+            for i in range(end_i - block_i):
+                for j in range(end_j - block_j):
+                    # Get window slices
+                    window_in = block_in[i:i+spatial_kern, j:j+spatial_kern]
+                    window_guide = block_guide[i:i+spatial_kern, j:j+spatial_kern]
+                    
+                    # Calculate range weights (vectorized)
+                    diff = block_center[i, j] - window_guide
+                    range_weights = np.exp(range_weight_denom * diff * diff)
+                    
+                    # Calculate weights (vectorized)
+                    weights = spatial_weights * range_weights
+                    
+                    # Calculate weighted sum (vectorized)
+                    sum_weight = np.sum(weights)
+                    sum_val = np.sum(weights * window_in)
+                    
+                    # Store result
+                    filt_out[block_i + i, block_j + j] = sum_val / (sum_weight + 1e-10)
+    
+    return filt_out
+
+def interpolate_green_channel_numba(img, bayer_pattern, height, width):
+    """Fully vectorized green channel interpolation using 2D convolution"""
+    # Convert input to float32 if not already
+    img = img.astype(np.float32)
+    
+    # Pre-compute kernel values and their products for faster computation
+    k = np.array([-1, 2, 4, 2, -1], dtype=np.float32) * 0.125
+    k_prod = np.outer(k, k)  # Pre-compute outer product for faster convolution
+
+    # Perform 2D convolution (fully vectorized)
+    interp_g = convolve(img, k_prod, mode='reflect')
+    interp_g = np.clip(interp_g, 0, 1)
+
+    # Initialize output arrays
+    interp_g_at_r = np.zeros((height//2, width//2), dtype=np.float32)
+    interp_g_at_b = np.zeros((height//2, width//2), dtype=np.float32)
+
+    # Extract interpolated values based on bayer pattern (vectorized)
+    if bayer_pattern == "rggb":
+        interp_g_at_r = interp_g[0:height:2, 0:width:2]
+        interp_g_at_b = interp_g[1:height:2, 1:width:2]
+    elif bayer_pattern == "bggr":
+        interp_g_at_r = interp_g[1:height:2, 1:width:2]
+        interp_g_at_b = interp_g[0:height:2, 0:width:2]
+    elif bayer_pattern == "grbg":
+        interp_g_at_r = interp_g[0:height:2, 1:width:2]
+        interp_g_at_b = interp_g[1:height:2, 0:width:2]
+    elif bayer_pattern == "gbrg":
+        interp_g_at_r = interp_g[1:height:2, 0:width:2]
+        interp_g_at_b = interp_g[0:height:2, 1:width:2]
+
+    return interp_g, interp_g_at_r, interp_g_at_b
+
+def fast_joint_bilateral_filter_opencv(src, guide, d, sigmaColor, sigmaSpace):
+    """Fast joint bilateral filter using OpenCV's ximgproc.jointBilateralFilter"""
+    src = src.astype(np.float32)
+    guide = guide.astype(np.float32)
+    # OpenCV expects single-channel images in HxW float32 or uint8
+    return cv2.ximgproc.jointBilateralFilter(guide, src, d, sigmaColor, sigmaSpace)
 
 class JointBF:
     """
@@ -37,9 +189,8 @@ class JointBF:
         width, height = self.sensor_info["width"], self.sensor_info["height"]
         bit_depth = self.sensor_info["hdr_bit_depth"]
 
-        # extract BNR parameters
+        # Extract BNR parameters
         filt_size = self.parm_bnr["filter_window"]
-        # s stands for spatial kernel parameters, r stands for range kernel parameters
         stddev_s_red, stddev_r_red = (
             self.parm_bnr["r_std_dev_s"],
             self.parm_bnr["r_std_dev_r"],
@@ -53,182 +204,56 @@ class JointBF:
             self.parm_bnr["b_std_dev_r"],
         )
 
-        # assuming image is in 12-bit range, converting to [0 1] range
+        # Convert to float32 and normalize
         in_img = np.float32(in_img) / (2**bit_depth - 1)
 
-        interp_g = np.zeros((height, width), dtype=np.float32)
-        in_img_r = np.zeros(
-            (np.uint32(height / 2), np.uint32(width / 2)), dtype=np.float32
-        )
-        in_img_b = np.zeros(
-            (np.uint32(height / 2), np.uint32(width / 2)), dtype=np.float32
-        )
-
-        # convert bayer image into sub-images for filtering each colour ch
-        in_img_raw = in_img.copy()
+        # Extract color channels based on bayer pattern
         if bayer_pattern == "rggb":
-            in_img_r = in_img_raw[0:height:2, 0:width:2]
-            in_img_b = in_img_raw[1:height:2, 1:width:2]
+            in_img_r = in_img[0:height:2, 0:width:2]
+            in_img_b = in_img[1:height:2, 1:width:2]
         elif bayer_pattern == "bggr":
-            in_img_r = in_img_raw[1:height:2, 1:width:2]
-            in_img_b = in_img_raw[0:height:2, 0:width:2]
+            in_img_r = in_img[1:height:2, 1:width:2]
+            in_img_b = in_img[0:height:2, 0:width:2]
         elif bayer_pattern == "grbg":
-            in_img_r = in_img_raw[0:height:2, 1:width:2]
-            in_img_b = in_img_raw[1:height:2, 0:width:2]
+            in_img_r = in_img[0:height:2, 1:width:2]
+            in_img_b = in_img[1:height:2, 0:width:2]
         elif bayer_pattern == "gbrg":
-            in_img_r = in_img_raw[1:height:2, 0:width:2]
-            in_img_b = in_img_raw[0:height:2, 1:width:2]
+            in_img_r = in_img[1:height:2, 0:width:2]
+            in_img_b = in_img[0:height:2, 1:width:2]
 
-        # define the G interpolation kernel
-        interp_kern_g_at_r = np.array(
-            [
-                [0, 0, -1, 0, 0],
-                [0, 0, 2, 0, 0],
-                [-1, 2, 4, 2, -1],
-                [0, 0, 2, 0, 0],
-                [0, 0, -1, 0, 0],
-            ],
-            dtype=np.float32,
+        # Interpolate green channel using Numba-accelerated function
+        interp_g, interp_g_at_r, interp_g_at_b = interpolate_green_channel_numba(
+            in_img, bayer_pattern, height, width
         )
 
-        interp_kern_g_at_r = interp_kern_g_at_r / np.sum(interp_kern_g_at_r)
+        # Generate Gaussian kernels using Numba
+        s_kern_r = gauss_kern_raw_numba(filt_size, stddev_s_red, 2)
+        s_kern_g = gauss_kern_raw_numba(filt_size, stddev_s_green, 1)
+        s_kern_b = gauss_kern_raw_numba(filt_size, stddev_s_blue, 2)
 
-        interp_kern_g_at_b = np.array(
-            [
-                [0, 0, -1, 0, 0],
-                [0, 0, 2, 0, 0],
-                [-1, 2, 4, 2, -1],
-                [0, 0, 2, 0, 0],
-                [0, 0, -1, 0, 0],
-            ],
-            dtype=np.float32,
-        )
+        # Apply fast joint bilateral filter using Numba
+        out_img_r = fast_joint_bilateral_filter_numba(in_img_r, interp_g_at_r, s_kern_r, stddev_r_red, filt_size)
+        out_img_g = fast_joint_bilateral_filter_numba(interp_g, interp_g, s_kern_g, stddev_r_green, filt_size)
+        out_img_b = fast_joint_bilateral_filter_numba(in_img_b, interp_g_at_b, s_kern_b, stddev_r_blue, filt_size)
 
-        interp_kern_g_at_b = interp_kern_g_at_b / np.sum(interp_kern_g_at_b)
-
-        # convolve the kernel with image and mask the result based on given bayer pattern
-        kern_filt_g_at_r = ndimage.convolve(in_img, interp_kern_g_at_r, mode="reflect")
-        kern_filt_g_at_b = ndimage.convolve(in_img, interp_kern_g_at_b, mode="reflect")
-
-        # clip any interpolation overshoots to [0 1] range
-        kern_filt_g_at_r = np.clip(kern_filt_g_at_r, 0, 1)
-        kern_filt_g_at_b = np.clip(kern_filt_g_at_b, 0, 1)
-
-        interp_g = in_img.copy()
-        interp_g_at_r = np.zeros(
-            (np.uint32(height / 2), np.uint32(width / 2)), dtype=np.float32
-        )
-        interp_g_at_b = np.zeros(
-            (np.uint32(height / 2), np.uint32(width / 2)), dtype=np.float32
-        )
-
-        if bayer_pattern == "rggb":
-            # extract R and B location Green pixels to form interpG image
-            interp_g[0:height:2, 0:width:2] = kern_filt_g_at_r[0:height:2, 0:width:2]
-            interp_g[1:height:2, 1:width:2] = kern_filt_g_at_b[1:height:2, 1:width:2]
-
-            # extract interpG ch sub-images for R sub-image and B sub-image guidance signals
-            interp_g_at_r = kern_filt_g_at_r[0:height:2, 0:width:2]
-            interp_g_at_b = kern_filt_g_at_b[1:height:2, 1:width:2]
-
-        elif bayer_pattern == "bggr":
-            # extract R and B location Green pixels to form interpG image
-            interp_g[1:height:2, 1:width:2] = kern_filt_g_at_r[1:height:2, 1:width:2]
-            interp_g[0:height:2, 0:width:2] = kern_filt_g_at_b[0:height:2, 0:width:2]
-
-            # extract interpG ch sub-images for R sub-image and B sub-image guidance signals
-            interp_g_at_r = kern_filt_g_at_r[1:height:2, 1:width:2]
-            interp_g_at_b = kern_filt_g_at_b[0:height:2, 0:width:2]
-
-        elif bayer_pattern == "grbg":
-            # extract R and B location Green pixels to form interpG image
-            interp_g[0:height:2, 1:width:2] = kern_filt_g_at_r[0:height:2, 1:width:2]
-            interp_g[1:height:2, 0:width:2] = kern_filt_g_at_b[1:height:2, 0:width:2]
-
-            # extract interpG ch sub-images for R sub-image and B sub-image guidance signals
-            interp_g_at_r = kern_filt_g_at_r[0:height:2, 1:width:2]
-            interp_g_at_b = kern_filt_g_at_b[1:height:2, 0:width:2]
-
-        elif bayer_pattern == "gbrg":
-            # extract R and B location Green pixels to form interpG image
-            interp_g[1:height:2, 0:width:2] = kern_filt_g_at_r[1:height:2, 0:width:2]
-            interp_g[0:height:2, 1:width:2] = kern_filt_g_at_b[0:height:2, 1:width:2]
-
-            # extract interpG ch sub-images for R sub-image and B sub-image guidance signals
-            interp_g_at_r = kern_filt_g_at_r[1:height:2, 0:width:2]
-            interp_g_at_b = kern_filt_g_at_b[0:height:2, 1:width:2]
-
-        # BNR window / filter size will be the same for full image and smaller for sub-image
-        filt_size_g = filt_size
-        filt_size_r = int((filt_size + 1) / 2)
-        filt_size_b = int((filt_size + 1) / 2)
-
-        # apply joint bilateral filter to the image with G channel as guidance signal
-        out_img_r = self.fast_joint_bilateral_filter(
-            in_img_r,
-            interp_g_at_r,
-            filt_size_r,
-            stddev_s_red,
-            filt_size_r,
-            stddev_r_red,
-            2,
-        )
-        out_img_g = self.fast_joint_bilateral_filter(
-            interp_g,
-            interp_g,
-            filt_size_g,
-            stddev_s_green,
-            filt_size_g,
-            stddev_r_green,
-            1,
-        )
-        out_img_b = self.fast_joint_bilateral_filter(
-            in_img_b,
-            interp_g_at_b,
-            filt_size_b,
-            stddev_s_blue,
-            filt_size_b,
-            stddev_r_blue,
-            2,
-        )
-
-        # join the colour pixel images back into the bayer image
-        bnr_out_img = np.zeros(in_img.shape)
+        # Combine channels back into bayer pattern
+        bnr_out_img = np.zeros_like(in_img)
         bnr_out_img = out_img_g.copy()
 
         if bayer_pattern == "rggb":
-            bnr_out_img[0:height:2, 0:width:2] = out_img_r[
-                0 : np.size(out_img_r, 0) : 1, 0 : np.size(out_img_r, 1) : 1
-            ]
-            bnr_out_img[1:height:2, 1:width:2] = out_img_b[
-                0 : np.size(out_img_b, 0) : 1, 0 : np.size(out_img_b, 1) : 1
-            ]
-
+            bnr_out_img[0:height:2, 0:width:2] = out_img_r
+            bnr_out_img[1:height:2, 1:width:2] = out_img_b
         elif bayer_pattern == "bggr":
-            bnr_out_img[1:height:2, 1:width:2] = out_img_r[
-                0 : np.size(out_img_r, 0) : 1, 0 : np.size(out_img_r, 1) : 1
-            ]
-            bnr_out_img[0:height:2, 0:width:2] = out_img_b[
-                0 : np.size(out_img_b, 0) : 1, 0 : np.size(out_img_b, 1) : 1
-            ]
-
+            bnr_out_img[1:height:2, 1:width:2] = out_img_r
+            bnr_out_img[0:height:2, 0:width:2] = out_img_b
         elif bayer_pattern == "grbg":
-            bnr_out_img[0:height:2, 1:width:2] = out_img_r[
-                0 : np.size(out_img_r, 0) : 1, 0 : np.size(out_img_r, 1) : 1
-            ]
-            bnr_out_img[1:height:2, 0:width:2] = out_img_b[
-                0 : np.size(out_img_b, 0) : 1, 0 : np.size(out_img_b, 1) : 1
-            ]
-
+            bnr_out_img[0:height:2, 1:width:2] = out_img_r
+            bnr_out_img[1:height:2, 0:width:2] = out_img_b
         elif bayer_pattern == "gbrg":
-            bnr_out_img[1:height:2, 0:width:2] = out_img_r[
-                0 : np.size(out_img_r, 0) : 1, 0 : np.size(out_img_r, 1) : 1
-            ]
-            bnr_out_img[0:height:2, 1:width:2] = out_img_b[
-                0 : np.size(out_img_b, 0) : 1, 0 : np.size(out_img_b, 1) : 1
-            ]
+            bnr_out_img[1:height:2, 0:width:2] = out_img_r
+            bnr_out_img[0:height:2, 1:width:2] = out_img_b
 
-        # convert normalized image to 32-bit range
+        # Convert back to original bit depth
         bnr_out_img = np.uint32(np.clip(bnr_out_img, 0, 1) * ((2**bit_depth) - 1))
         return bnr_out_img
 

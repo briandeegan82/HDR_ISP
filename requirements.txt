@@ -1,7 +1,12 @@
 matplotlib
-numpy==
+numpy==1.24.3
 pyyaml
 rawpy
 scipy
 tqdm
 rawpy
+tifffile
+cython
+imagecodecs
+opencv-contrib-python
+opencv-python
