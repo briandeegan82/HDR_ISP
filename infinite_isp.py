@@ -135,7 +135,7 @@ class InfiniteISP:
 
     def load_raw(self):
         """
-        Load raw image from provided path
+        Load raw image from provided path using memory mapping for large files
         """
         # Load raw image file information
         path_object = Path(self.data_path, self.raw_file)
@@ -149,36 +149,53 @@ class InfiniteISP:
         width = self.sensor_info["width"]
         height = self.sensor_info["height"]
         bit_depth = self.sensor_info["bit_depth"]
+        
+        # Calculate file size to determine if memory mapping should be used
+        file_size = path_object.stat().st_size
+        use_mmap = file_size > 100 * 1024 * 1024  # Use mmap for files > 100MB
 
         # Load Raw
         if self.memory_mapped_data is not None:
-            # Use memory-mapped data if provided
+            # Use provided memory-mapped data
             if bit_depth > 8:
                 self.raw = self.memory_mapped_data.reshape((height, width))
             else:
                 self.raw = self.memory_mapped_data.reshape((height, width)).astype(np.uint16)
         elif path_object.suffix == ".raw":
-            if bit_depth > 8:
-                self.raw = np.fromfile(raw_path, dtype='>u2').reshape(
-                    (height, width)
-                )
+            if use_mmap:
+                # Use memory mapping for large raw files
+                if bit_depth > 8:
+                    self.raw = np.memmap(raw_path, dtype='>u2', mode='r', shape=(height, width))
+                else:
+                    self.raw = np.memmap(raw_path, dtype=np.uint8, mode='r', shape=(height, width)).astype(np.uint16)
             else:
-                self.raw = (
-                    np.fromfile(raw_path, dtype=np.uint8)
-                    .reshape((height, width))
-                    .astype(np.uint16)
-                )
+                # Direct loading for smaller files
+                if bit_depth > 8:
+                    self.raw = np.fromfile(raw_path, dtype='>u2').reshape((height, width))
+                else:
+                    self.raw = np.fromfile(raw_path, dtype=np.uint8).reshape((height, width)).astype(np.uint16)
         elif path_object.suffix == ".tiff":
-            # Load tiff file
-            img = tiff.imread(raw_path)
-            print("Image shape: ", img.shape)
-            if img.ndim == 3:
-                self.raw = img[:, :, 0]
+            # Load tiff file with memory mapping for large files
+            if use_mmap:
+                img = tiff.imread(raw_path, aszarr=True)
+                if img.ndim == 3:
+                    self.raw = img[:, :, 0]
+                else:
+                    self.raw = img
             else:
-                self.raw = img
+                img = tiff.imread(raw_path)
+                if img.ndim == 3:
+                    self.raw = img[:, :, 0]
+                else:
+                    self.raw = img
         else:
-            img = rawpy.imread(raw_path)
-            self.raw = img.raw_image
+            # For other formats, use rawpy with memory mapping if possible
+            if use_mmap:
+                with rawpy.imread(raw_path) as raw:
+                    self.raw = np.memmap(raw_path, dtype=raw.raw_image.dtype, mode='r', shape=raw.raw_image.shape)
+            else:
+                with rawpy.imread(raw_path) as raw:
+                    self.raw = raw.raw_image.copy()  # Use copy to ensure data is loaded into memory
 
     def run_pipeline(self, visualize_output=True, save_intermediate=False):
         """
@@ -396,14 +413,28 @@ class InfiniteISP:
 
         # Note Initial Time for Pipeline Execution
         start = time.time()
+        
+        # Generate timestamp for output filename
+        timestamp = time.strftime("_%Y%m%d_%H%M%S")
 
         if not self.render_3a:
             # Run ISP-Pipeline once
-            self.run_pipeline(visualize_output=True, save_intermediate=save_intermediate)
-            # Display 3A Statistics
+            final_img = self.run_pipeline(visualize_output=True, save_intermediate=save_intermediate)
+            # Save final output
+            output_dir = Path("out_frames")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = output_dir / f"{self.out_file}{timestamp}.png"
+            util.save_image(final_img, output_path)
+            print(f"Final output saved to: {output_path}")
         else:
             # Run ISP-Pipeline till Correct Exposure with AWB gains
-            self.execute_with_3a_statistics(save_intermediate)
+            final_img = self.execute_with_3a_statistics(save_intermediate)
+            # Save final output
+            output_dir = Path("out_frames")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = output_dir / f"{self.out_file}{timestamp}.png"
+            util.save_image(final_img, output_path)
+            print(f"Final output saved to: {output_path}")
 
         util.display_ae_statistics(self.ae_feedback, self.awb_gains)
 
