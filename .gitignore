@@ -149,3 +149,9 @@ in_frames/
 # OS specific
 .DS_Store
 Thumbs.db
+
+# Python virtual environments
+venv/
+venv_py38/
+env/
+ENV/
