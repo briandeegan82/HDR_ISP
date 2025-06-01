@@ -151,194 +151,248 @@ class InfiniteISP:
             img = rawpy.imread(raw_path)
             self.raw = img.raw_image
 
-    def run_pipeline(self, visualize_output=True):
+    def run_pipeline(self, visualize_output=True, save_intermediate=False):
         """
         Simulation of ISP-Pipeline
+        
+        Args:
+            visualize_output (bool): Whether to visualize and save the final output
+            save_intermediate (bool): Whether to save intermediate images at each stage
         """
+        # Create output directory for intermediate images if needed
+        if save_intermediate:
+            intermediate_dir = Path("out_frames/intermediate")
+            intermediate_dir.mkdir(parents=True, exist_ok=True)
+            stage_count = 0
 
         # =====================================================================
         # Cropping
         crop = Crop(self.raw, self.platform, self.sensor_info, self.parm_cro)
-        cropped_img = crop.execute()
+        img = crop.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_crop.png")
+            stage_count += 1
 
         # =====================================================================
         #  Dead pixels correction
-        dpc = DPC(cropped_img, self.sensor_info, self.parm_dpc, self.platform)
-        dpc_raw = dpc.execute()
+        dpc = DPC(img, self.sensor_info, self.parm_dpc, self.platform)
+        img = dpc.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_dead_pixel_correction.png")
+            stage_count += 1
 
         # =====================================================================
         # Black level correction
-        blc = BLC(dpc_raw, self.platform, self.sensor_info, self.parm_blc)
-        blc_raw = blc.execute()
-
+        blc = BLC(img, self.platform, self.sensor_info, self.parm_blc)
+        img = blc.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_black_level_correction.png")
+            stage_count += 1
 
         # =====================================================================
         # decompanding
-        cmpd = PWC(blc_raw, self.platform, self.sensor_info, self.parm_cmpd)
-        cmpd_raw = cmpd.execute()
+        cmpd = PWC(img, self.platform, self.sensor_info, self.parm_cmpd)
+        img = cmpd.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_decompanding.png")
+            stage_count += 1
 
         # =====================================================================
         # OECF
-        oecf = OECF(cmpd_raw, self.platform, self.sensor_info, self.parm_oec)
-        oecf_raw = oecf.execute()
+        oecf = OECF(img, self.platform, self.sensor_info, self.parm_oec)
+        img = oecf.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_oecf.png")
+            stage_count += 1
 
         # =====================================================================
         # Digital Gain
-        dga = DG(cmpd_raw, self.platform, self.sensor_info, self.parm_dga)
-        dga_raw, self.dga_current_gain = dga.execute()
-
-
+        dga = DG(img, self.platform, self.sensor_info, self.parm_dga)
+        img, self.dga_current_gain = dga.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_digital_gain.png")
+            stage_count += 1
 
         # =====================================================================
         # Lens shading correction
-        lsc = LSC(dga_raw, self.platform, self.sensor_info, self.parm_lsc)
-        lsc_raw = lsc.execute()
-
-
+        lsc = LSC(img, self.platform, self.sensor_info, self.parm_lsc)
+        img = lsc.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_lens_shading_correction.png")
+            stage_count += 1
 
         # =====================================================================
         # Bayer noise reduction
-        bnr = BNR(lsc_raw, self.sensor_info, self.parm_bnr, self.platform)
-        bnr_raw = bnr.execute()
-
+        bnr = BNR(img, self.sensor_info, self.parm_bnr, self.platform)
+        img = bnr.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_bayer_noise_reduction.png")
+            stage_count += 1
 
         # =====================================================================
         # Auto White Balance
-        awb = AWB(bnr_raw, self.sensor_info, self.parm_awb)
+        awb = AWB(img, self.sensor_info, self.parm_awb)
         self.awb_gains = awb.execute()
 
         # =====================================================================
         # White balancing
-        wbc = WB(bnr_raw, self.platform, self.sensor_info, self.parm_wbc)
-        wb_raw = wbc.execute()
-
-
+        wbc = WB(img, self.platform, self.sensor_info, self.parm_wbc)
+        img = wbc.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_white_balance.png")
+            stage_count += 1
 
         # =====================================================================
         # HDR tone mapping
-        hdr = HDR(wb_raw, self.platform, self.sensor_info, self.param_durand)
-        hdr_raw = hdr.execute()
-        print("HDR Image mean: ", np.mean(hdr_raw))
-
-
+        hdr = HDR(img, self.platform, self.sensor_info, self.param_durand)
+        img = hdr.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_hdr_tone_mapping.png")
+            stage_count += 1
+        print("HDR Image mean: ", np.mean(img))
 
         # =====================================================================
         # CFA demosaicing
-        cfa_inter = Demosaic(hdr_raw, self.platform, self.sensor_info, self.parm_dem)
-        demos_img = cfa_inter.execute()
-        print("Demosaiced Image mean: ", np.mean(demos_img))
-
-
+        cfa_inter = Demosaic(img, self.platform, self.sensor_info, self.parm_dem)
+        img = cfa_inter.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_demosaic.png")
+            stage_count += 1
+        print("Demosaiced Image mean: ", np.mean(img))
 
         # =====================================================================
         # Color correction matrix
-        ccm = CCM(demos_img, self.platform, self.sensor_info, self.parm_ccm)
-        ccm_img = ccm.execute()
-        print("CCM Image mean: ", np.mean(ccm_img))
+        ccm = CCM(img, self.platform, self.sensor_info, self.parm_ccm)
+        img = ccm.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_color_correction_matrix.png")
+            stage_count += 1
+        print("CCM Image mean: ", np.mean(img))
 
         # =====================================================================
         # Gamma
-        gmc = GC(ccm_img, self.platform, self.sensor_info, self.parm_gmc)
-        gamma_raw = gmc.execute()
-        print("Gamma Image mean: ", np.mean(gamma_raw))
+        gmc = GC(img, self.platform, self.sensor_info, self.parm_gmc)
+        img = gmc.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_gamma_correction.png")
+            stage_count += 1
+        print("Gamma Image mean: ", np.mean(img))
 
-        # =====================================================================
+        # =========================
         # Auto-Exposure
-        aef = AE(gamma_raw, self.sensor_info, self.parm_ae)
+        aef = AE(img, self.sensor_info, self.parm_ae)
         self.ae_feedback = aef.execute()
         print("AE Feedback: ", self.ae_feedback)
 
         # =====================================================================
         # Color space conversion
-        csc = CSC(gamma_raw, self.platform, self.sensor_info, self.parm_csc, self.parm_cse )
-        csc_img = csc.execute()
-        print("CSC Image mean: ", np.mean(csc_img))
+        csc = CSC(img, self.platform, self.sensor_info, self.parm_csc, self.parm_cse)
+        img = csc.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_color_space_conversion.png")
+            stage_count += 1
+        print("CSC Image mean: ", np.mean(img))
 
         # =====================================================================
         # Local Dynamic Contrast Improvement
         ldci = LDCI(
-            csc_img,
+            img,
             self.platform,
             self.sensor_info,
             self.parm_ldci,
             self.parm_csc["conv_standard"],
         )
-        ldci_img = ldci.execute()
+        img = ldci.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_ldci.png")
+            stage_count += 1
 
         # =====================================================================
         # Sharpening
         sharp = SHARP(
-            ldci_img,
+            img,
             self.platform,
             self.sensor_info,
             self.parm_sha,
             self.parm_csc["conv_standard"],
         )
-        sharp_img = sharp.execute()
+        img = sharp.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_sharpening.png")
+            stage_count += 1
 
         # =====================================================================
         # 2d noise reduction
         nr2d = NR2D(
-            sharp_img,
+            img,
             self.sensor_info,
             self.parm_2dn,
             self.platform,
             self.parm_csc["conv_standard"],
         )
-        nr2d_img = nr2d.execute()
+        img = nr2d.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_2d_noise_reduction.png")
+            stage_count += 1
 
         # =====================================================================
         # RGB conversion
         rgbc = RGBC(
-            nr2d_img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc
+            img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc
         )
-        rgbc_img = rgbc.execute()
+        img = rgbc.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_rgb_conversion.png")
+            stage_count += 1
 
         # =====================================================================
         # Scaling
         scale = Scale(
-            rgbc_img,
+            img,
             self.platform,
             self.sensor_info,
             self.parm_sca,
             self.parm_csc["conv_standard"],
         )
-        scaled_img = scale.execute()
+        img = scale.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_scaling.png")
+            stage_count += 1
 
         # =====================================================================
         # YUV saving format 444, 422 etc
-        yuv = YUV_C(scaled_img, self.platform, self.sensor_info, self.parm_yuv)
-        yuv_conv = yuv.execute()
+        yuv = YUV_C(img, self.platform, self.sensor_info, self.parm_yuv)
+        img = yuv.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_yuv_conversion.png")
+            stage_count += 1
 
         # only to view image if csc is off it does nothing
-        out_img = yuv_conv
-        out_dim = scaled_img.shape  # dimensions of Output Image
+        out_img = img
+        out_dim = img.shape  # dimensions of Output Image
 
         # Is not part of ISP-pipeline only assists in visualizing output results
         if visualize_output:
-
             # There can be two out_img formats depending upon which modules are
             # enabled 1. YUV    2. RGB
 
             if self.parm_yuv["is_enable"] is True:
-
                 # YUV_C is enabled and RGB_C is disabled: Output is compressed YUV
                 # To display : Need to decompress it and convert it to RGB.
                 image_height, image_width, _ = out_dim
                 yuv_custom_format = self.parm_yuv["conv_type"]
 
                 yuv_conv = util.get_image_from_yuv_format_conversion(
-                    yuv_conv, image_height, image_width, yuv_custom_format
+                    img, image_height, image_width, yuv_custom_format
                 )
 
                 rgbc.yuv_img = yuv_conv
                 out_rgb = rgbc.yuv_to_rgb()
 
             elif self.parm_rgb["is_enable"] is False:
-
                 # RGB_C is disabled: Output is 3D - YUV
                 # To display : Only convert it to RGB
-                rgbc.yuv_img = yuv_conv
+                rgbc.yuv_img = img
                 out_rgb = rgbc.yuv_to_rgb()
 
             else:
@@ -351,9 +405,13 @@ class InfiniteISP:
 
             util.save_pipeline_output(self.out_file, out_rgb, self.c_yaml)
 
-    def execute(self, img_path=None):
+    def execute(self, img_path=None, save_intermediate=False):
         """
         Start execution of Infinite-ISP
+        
+        Args:
+            img_path (str, optional): Path to the input image. If None, uses the path from config.
+            save_intermediate (bool): Whether to save intermediate images at each stage.
         """
         if img_path is not None:
             self.raw_file = img_path
@@ -370,11 +428,11 @@ class InfiniteISP:
 
         if not self.render_3a:
             # Run ISP-Pipeline once
-            self.run_pipeline(visualize_output=True)
+            self.run_pipeline(visualize_output=True, save_intermediate=save_intermediate)
             # Display 3A Statistics
         else:
             # Run ISP-Pipeline till Correct Exposure with AWB gains
-            self.execute_with_3a_statistics()
+            self.execute_with_3a_statistics(save_intermediate)
 
         util.display_ae_statistics(self.ae_feedback, self.awb_gains)
 
@@ -404,16 +462,18 @@ class InfiniteISP:
                 "current_gain"
             ] = self.dga_current_gain
 
-    def execute_with_3a_statistics(self):
+    def execute_with_3a_statistics(self, save_intermediate=False):
         """
         Execute Infinite-ISP with AWB gains and correct exposure
+        
+        Args:
+            save_intermediate (bool): Whether to save intermediate images at each stage
         """
-
         # Maximum Iterations depend on total permissible gains
         max_dg = len(self.parm_dga["gain_array"])
 
         # Run ISP-Pipeline
-        self.run_pipeline(visualize_output=False)
+        self.run_pipeline(visualize_output=False, save_intermediate=save_intermediate)
         self.load_3a_statistics()
         while not (
             (self.ae_feedback == 0)
@@ -421,10 +481,10 @@ class InfiniteISP:
             or (self.ae_feedback == 1 and self.dga_current_gain == 0)
             or self.ae_feedback is None
         ):
-            self.run_pipeline(visualize_output=False)
+            self.run_pipeline(visualize_output=False, save_intermediate=save_intermediate)
             self.load_3a_statistics()
 
-        self.run_pipeline(visualize_output=True)
+        self.run_pipeline(visualize_output=True, save_intermediate=save_intermediate)
 
     def update_sensor_info(self, sensor_info, update_blc_wb=False):
         """

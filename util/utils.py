@@ -410,3 +410,25 @@ def apply_cfa(img, bit_depth, bayer):
     demos_out = np.clip(demos_out, 0, 2**bit_depth - 1)
     demos_out = np.uint16(demos_out)
     return demos_out
+
+
+def save_image(img, output_path):
+    """
+    Save an image to the specified path.
+    Handles both grayscale and color images.
+    
+    Args:
+        img (numpy.ndarray): Image to save
+        output_path (str or Path): Path where to save the image
+    """
+    # Normalize image to 0-255 range if needed
+    if img.dtype != np.uint8:
+        if img.max() > 1.0:
+            img = img / img.max()
+        img = (img * 255).astype(np.uint8)
+    
+    # Handle grayscale images
+    if len(img.shape) == 2:
+        plt.imsave(output_path, img, cmap='gray')
+    else:
+        plt.imsave(output_path, img)
