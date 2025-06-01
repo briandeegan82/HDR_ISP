@@ -85,13 +85,13 @@ lens_shading_correction:
 
 bayer_noise_reduction:
   is_enable: true
-  filter_window: 9
-  r_std_dev_s: 1
-  r_std_dev_r: 0.1
-  g_std_dev_s: 1
-  g_std_dev_r: 0.08
-  b_std_dev_s: 1
-  b_std_dev_r: 0.1
+  filter_window: 5
+  r_std_dev_s: 0.8
+  r_std_dev_r: 0.15
+  g_std_dev_s: 0.8
+  g_std_dev_r: 0.15
+  b_std_dev_s: 0.8
+  b_std_dev_r: 0.15
   is_save: false
 
 auto_white_balance:
