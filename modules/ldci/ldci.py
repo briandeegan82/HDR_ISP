@@ -28,8 +28,15 @@ class LDCI:
         """
         Applying LDCI module to the given image
         """
+        print("\nLDCI Processing:")
+        print(f"  Window size: {self.parm_ldci['wind']}")
+        print(f"  Clip limit: {self.parm_ldci['clip_limit']}")
+        
+        clahe_start = time.time()
         clahe = CLAHE(self.yuv, self.platform, self.sensor_info, self.parm_ldci)
         out_ceh = clahe.apply_clahe()
+        clahe_time = time.time() - clahe_start
+        print(f"  CLAHE processing time: {clahe_time:.3f}s")
 
         return out_ceh
 
@@ -38,6 +45,7 @@ class LDCI:
         Function to save module output
         """
         if self.is_save:
+            save_start = time.time()
             save_output_array_yuv(
                 self.platform["in_file"],
                 self.img,
@@ -45,17 +53,21 @@ class LDCI:
                 self.platform,
                 self.conv_std,
             )
+            save_time = time.time() - save_start
+            print(f"  Save time: {save_time:.3f}s")
 
     def execute(self):
         """
         Executing LDCI module according to user choice
         """
-        print("LDCI = " + str(self.enable))
+        print("\nLDCI Module:")
+        print(f"  Enabled: {self.enable}")
 
         if self.enable is True:
-            start = time.time()
+            total_start = time.time()
             s_out = self.apply_ldci()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            total_time = time.time() - total_start
+            print(f"  Total processing time: {total_time:.3f}s")
             self.img = s_out
 
         self.save()

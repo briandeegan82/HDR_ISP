@@ -12,6 +12,7 @@ Author: x10xEngineers
 """
 import math
 import numpy as np
+import time
 
 
 class CLAHE:
@@ -72,7 +73,12 @@ class CLAHE:
         Generating LUT using histogram equalization
         """
         # Computing histograms--hist will have bincounts
+        hist_start = time.time()
         hist, _ = np.histogram(tiled_array, bins=256, range=(0, 255))
+        hist_time = time.time() - hist_start
+        print(f"      Histogram computation: {hist_time:.3f}s")
+
+        clip_start = time.time()
         clip_limit = self.clip_limit
 
         # Clipping each bin counts within the range of window size to avoid artifacts
@@ -82,14 +88,25 @@ class CLAHE:
 
         clipped_hist = np.clip(hist, 0, clip_limit)
         num_clipped_pixels = (hist - clipped_hist).sum()
+        clip_time = time.time() - clip_start
+        print(f"      Histogram clipping: {clip_time:.3f}s")
 
         # Adding clipped pixels to each bin and getting its sum for normalization
+        norm_start = time.time()
         hist = clipped_hist + num_clipped_pixels / 256 + 1
         pdf = hist / hist.sum()
         cdf = np.cumsum(pdf)
+        norm_time = time.time() - norm_start
+        print(f"      PDF/CDF computation: {norm_time:.3f}s")
 
         # Computing cdf and getting the LUT for the array
+        lut_start = time.time()
         look_up_table = (cdf * 255).astype(np.uint8)
+        lut_time = time.time() - lut_start
+        print(f"      LUT finalization: {lut_time:.3f}s")
+
+        total_time = time.time() - hist_start
+        print(f"    Total LUT generation time: {total_time:.3f}s")
 
         return look_up_table
 
@@ -168,15 +185,55 @@ class CLAHE:
             x_tiles, y_tiles, i_col, i_row
         )
 
+    def get_tile_lut_vectorized(self, tiled_arrays):
+        """
+        Generating LUTs using histogram equalization for multiple tiles at once
+        """
+        # Computing histograms for all tiles at once
+        hist_start = time.time()
+        # Reshape to 2D array where each row is a tile
+        tiles_flat = tiled_arrays.reshape(-1, self.wind * self.wind)
+        # Compute histograms for all tiles at once
+        hists = np.apply_along_axis(
+            lambda x: np.histogram(x, bins=256, range=(0, 255))[0],
+            1, tiles_flat
+        )
+        hist_time = time.time() - hist_start
+        print(f"      Vectorized histogram computation: {hist_time:.3f}s")
+
+        clip_start = time.time()
+        clip_limit = self.clip_limit
+        if clip_limit >= self.wind:
+            clip_limit = 0.08 * self.wind
+
+        # Clip all histograms at once
+        clipped_hists = np.clip(hists, 0, clip_limit)
+        num_clipped_pixels = (hists - clipped_hists).sum(axis=1, keepdims=True)
+
+        # Add clipped pixels to each bin and normalize
+        hists = clipped_hists + num_clipped_pixels / 256 + 1
+        pdfs = hists / hists.sum(axis=1, keepdims=True)
+        cdfs = np.cumsum(pdfs, axis=1)
+
+        # Generate LUTs for all tiles at once
+        look_up_tables = (cdfs * 255).astype(np.uint8)
+        clip_time = time.time() - clip_start
+        print(f"      Vectorized LUT generation: {clip_time:.3f}s")
+
+        return look_up_tables
+
     def apply_clahe(self):
         """
         Applying clahe algorithm for contrast enhancement
         """
+        print("\nCLAHE Processing:")
+        total_start = time.time()
+        
         wind = self.wind
         in_yuv = self.yuv
 
         # Extracting Luminance channel from yuv as LDCI will be applied to Y channel only
-
+        prep_start = time.time()
         yuv = in_yuv[:, :, 0]
         img_height, img_width = yuv.shape
 
@@ -212,33 +269,32 @@ class CLAHE:
             (-1, 1)
         )
 
-        # Declaring an empty 3D (x,y,z) array of LUTs for each tile, where x,y are
-        # the coordinates of the tile and z a linear array of 256
-        luts = np.empty(shape=(vert_tiles, horiz_tiles, 256), dtype=np.uint8)
-
         # Creating a copy of yuv image
         y_padded = yuv
         y_padded = self.pad_array(y_padded, pads=pads)
 
-        # for loops for getting LUT for each tile (row wise iterations)
-        for rows in range(vert_tiles):
-            for colm in range(horiz_tiles):
-                # Extracting tile
-                start_row = rows * tile_height
-                end_row = (rows + 1) * tile_height
-                start_col = colm * tile_width
-                end_col = (colm + 1) * tile_width
+        # Extract all tiles at once
+        tiles = np.zeros((vert_tiles * horiz_tiles, wind, wind), dtype=np.uint8)
+        for i in range(vert_tiles):
+            for j in range(horiz_tiles):
+                start_row = i * tile_height
+                end_row = (i + 1) * tile_height
+                start_col = j * tile_width
+                end_col = (j + 1) * tile_width
+                tiles[i * horiz_tiles + j] = y_padded[start_row:end_row, start_col:end_col]
 
-                # Extracting each tile
-                y_tile = y_padded[start_row:end_row, start_col:end_col]
-
-                # Getting LUT for each tile using HE
-                luts[rows, colm] = self.get_tile_lut(y_tile)
+        # Generate LUTs for all tiles at once
+        lut_start = time.time()
+        luts = self.get_tile_lut_vectorized(tiles)
+        luts = luts.reshape(vert_tiles, horiz_tiles, 256)
+        lut_time = time.time() - lut_start
+        print(f"  Vectorized LUT generation for all tiles: {lut_time:.3f}s")
 
         # Declaring an empty array for output array after padding is done
         y_ceh = np.empty_like(y_padded)
 
         # For loops for processing image array tile by tile
+        interp_start = time.time()
         for i_row in range(vert_tiles + 1):
             for i_col in range(horiz_tiles + 1):
                 # Extracting tile/block
@@ -254,9 +310,7 @@ class CLAHE:
                     y_padded[
                         start_row_index:end_row_index, start_col_index:end_col_index
                     ]
-                ).astype(
-                    np.uint8
-                )  # tile/block
+                ).astype(np.uint8)
 
                 # checking the position of the block and applying interpolation accordingly
                 if self.is_corner_block(horiz_tiles, vert_tiles, i_col, i_row):
@@ -283,9 +337,7 @@ class CLAHE:
                                 left_lut_weights, y_block, left_lut, current_lut
                             )
                         )
-                    ).astype(
-                        np.float32
-                    )
+                    ).astype(np.float32)
 
                 elif self.is_left_or_right_block(horiz_tiles, vert_tiles, i_col, i_row):
                     # if the block is present at the left or right region, current block is
@@ -301,9 +353,7 @@ class CLAHE:
                                 top_lut_weights, y_block, top_lut, current_lut
                             )
                         )
-                    ).astype(
-                        np.float32
-                    )
+                    ).astype(np.float32)
 
                 else:
                     # check to see if the block is present in the middle region of the image
@@ -327,9 +377,7 @@ class CLAHE:
                                 current_lut,
                             )
                         )
-                    ).astype(
-                        np.float32
-                    )
+                    ).astype(np.float32)
 
         y_padded = self.crop(y_ceh, pads)
 
@@ -342,4 +390,10 @@ class CLAHE:
         out_ceh[:, :, 1] = in_yuv[:, :, 1]
         out_ceh[:, :, 2] = in_yuv[:, :, 2]
 
+        interp_time = time.time() - interp_start
+        print(f"  Interpolation time: {interp_time:.3f}s")
+        
+        total_time = time.time() - total_start
+        print(f"  Total CLAHE processing time: {total_time:.3f}s")
+        
         return out_ceh
