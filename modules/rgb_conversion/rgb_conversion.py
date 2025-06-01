@@ -33,44 +33,45 @@ class RGBConversion:
         self.conv_std = parm_csc["conv_standard"]
         self.yuv_img = img
         self.yuv2rgb_mat = None
+        
+        # Pre-compute conversion matrices
+        if self.conv_std == 1:
+            # for BT. 709
+            self.yuv2rgb_mat = np.array([[74, 0, 114], [74, -13, -34], [74, 135, 0]], dtype=np.int32)
+        else:
+            # for BT.601/407
+            self.yuv2rgb_mat = np.array([[64, 87, 0], [64, -44, -20], [61, 0, 105]], dtype=np.int32)
+        
+        # Pre-compute offset array
+        self.offset = np.array([16, 128, 128], dtype=np.int32)
 
     def yuv_to_rgb(self):
         """
         YUV-to-RGB Colorspace conversion 8bit
         """
+        start_total = time.time()
+        
+        # Time matrix reshaping and offset subtraction
+        start_reshape = time.time()
+        # Reshape and subtract offset in one step
+        mat_2d = self.yuv_img.reshape(-1, 3) - self.offset
+        mat2d_t = mat_2d.T
+        print(f"  Matrix reshaping and offset time: {(time.time() - start_reshape)*1000:.2f}ms")
 
-        # make nx3 2d matrix of image
-        mat_2d = self.yuv_img.reshape(
-            (self.yuv_img.shape[0] * self.yuv_img.shape[1], 3)
-        )
-
-        # convert to 3xn for matrix multiplication
-        mat2d_t = mat_2d.transpose()
-
-        # subract the offsets
-        mat2d_t = mat2d_t - np.array([[16, 128, 128]]).transpose()
-
-        if self.conv_std == 1:
-            # for BT. 709
-            self.yuv2rgb_mat = np.array([[74, 0, 114], [74, -13, -34], [74, 135, 0]])
-        else:
-            # for BT.601/407
-            # conversion metrix with 8bit integer co-efficients - m=8
-            self.yuv2rgb_mat = np.array([[64, 87, 0], [64, -44, -20], [61, 0, 105]])
-
-        # convert to RGB
+        # Time matrix multiplication
+        start_mult = time.time()
+        # Use optimized matrix multiplication
         rgb_2d = np.matmul(self.yuv2rgb_mat, mat2d_t)
         rgb_2d = rgb_2d >> 6
+        print(f"  Matrix multiplication time: {(time.time() - start_mult)*1000:.2f}ms")
 
-        # reshape the image back
-        rgb2d_t = rgb_2d.transpose()
-        self.yuv_img = rgb2d_t.reshape(self.yuv_img.shape).astype(np.float32)
-
-        # clip the resultant img as it can have neg rgb values for small Y'
-        self.yuv_img = np.float32(np.clip(self.yuv_img, 0, 255))
-
-        # convert the image to [0-255]
-        self.yuv_img = np.uint8(self.yuv_img)
+        # Time final conversion
+        start_final = time.time()
+        # Combine operations and use optimized numpy functions
+        self.yuv_img = np.clip(rgb_2d.T.reshape(self.yuv_img.shape), 0, 255).astype(np.uint8)
+        print(f"  Final conversion time: {(time.time() - start_final)*1000:.2f}ms")
+        
+        print(f"  Total RGB conversion time: {(time.time() - start_total)*1000:.2f}ms")
         return self.yuv_img
 
     def save(self):
@@ -104,7 +105,7 @@ class RGBConversion:
         if self.enable:
             start = time.time()
             rgb_out = self.yuv_to_rgb()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            print(f"  Total execution time: {time.time() - start:.3f}s")
             self.img = rgb_out
         self.save()
         return self.img
