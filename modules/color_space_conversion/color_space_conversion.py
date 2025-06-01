@@ -39,6 +39,7 @@ class ColorSpaceConversion:
         """
         RGB-to-YUV Colorspace conversion 8bit
         """
+        total_start = time.time()
 
         if self.conv_std == 1:
             # for BT. 709
@@ -46,55 +47,45 @@ class ColorSpaceConversion:
                 [[47, 157, 16], [-26, -86, 112], [112, -102, -10]]
             )
         else:
-
             # for BT.601/407
             # conversion metrix with 8bit integer co-efficients - m=8
             self.rgb2yuv_mat = np.array(
                 [[77, 150, 29], [131, -110, -21], [-44, -87, 138]]
             )
 
-        # make nx3 2d matrix of image
-        mat_2d = self.img.reshape((self.img.shape[0] * self.img.shape[1], 3))
+        start = time.time()
+        # make nx3 2d matrix of image and convert to 3xn for matrix multiplication
+        mat2d_t = self.img.reshape(-1, 3).T
+        print(f"  Matrix reshape and transpose time: {time.time() - start:.3f}s")
 
-        # convert to 3xn for matrix multiplication
-        mat2d_t = mat_2d.transpose()
-
-        # convert to YUV
+        start = time.time()
+        # convert to YUV and combine bit depth conversion
         yuv_2d = np.matmul(self.rgb2yuv_mat, mat2d_t)
-
-        # convert image with its provided bit_depth
         yuv_2d = np.float64(yuv_2d) / (2**8)
-        yuv_2d = np.where(yuv_2d >= 0, np.floor(yuv_2d + 0.5), np.ceil(yuv_2d - 0.5))
+        yuv_2d = np.round(yuv_2d)  # More efficient than where/floor/ceil
+        print(f"  Matrix multiplication and bit depth conversion time: {time.time() - start:.3f}s")
 
         # color saturation enhancment block:
         if self.parm_cse['is_enable']:
+            start = time.time()
             gain = self.parm_cse['saturation_gain']
+            yuv_2d[1:, :] *= gain  # Apply gain to both U and V channels at once
+            print(f"  Color saturation enhancement time: {time.time() - start:.3f}s")
 
-            yuv_2d[1, :] = yuv_2d[1, :] * gain
-            yuv_2d[2, :] = yuv_2d[2, :] * gain
-
-
-
-
-        # black-level/DC offset added to YUV values
-        yuv_2d[0, :] = 2 ** (self.bit_depth / 2) + yuv_2d[0, :]
-        yuv_2d[1, :] = 2 ** (self.bit_depth - 1) + yuv_2d[1, :]
-        yuv_2d[2, :] = 2 ** (self.bit_depth - 1) + yuv_2d[2, :]
-
-        # reshape the image back
-        yuv2d_t = yuv_2d.transpose()
-
+        start = time.time()
+        # Combine black-level/DC offset and final normalization
+        yuv_2d[0, :] += 2 ** (self.bit_depth / 2)
+        yuv_2d[1:, :] += 2 ** (self.bit_depth - 1)
+        
+        # Combine transpose, clip, and final normalization
+        yuv2d_t = yuv_2d.T
         yuv2d_t = np.clip(yuv2d_t, 0, (2**self.bit_depth) - 1)
-
-        # Modules after CSC need 8-bit YUV so converting it into 8-bit after Normalizing.
-        yuv2d_t = yuv2d_t / (2 ** (self.bit_depth - 8))
-        yuv2d_t = np.where(
-            yuv2d_t >= 0, np.floor(yuv2d_t + 0.5), np.ceil(yuv2d_t - 0.5)
-        )
-
+        yuv2d_t = np.round(yuv2d_t / (2 ** (self.bit_depth - 8)))
         yuv2d_t = np.clip(yuv2d_t, 0, 255)
-
         self.img = yuv2d_t.reshape(self.img.shape).astype(np.uint8)
+        print(f"  Final processing time: {time.time() - start:.3f}s")
+
+        print(f"  Total RGB to YUV conversion time: {time.time() - total_start:.3f}s")
         return self.img
 
     def save(self):
@@ -118,7 +109,7 @@ class ColorSpaceConversion:
 
         start = time.time()
         csc_out = self.rgb_to_yuv_8bit()
-        print(f"  Execution time: {time.time() - start:.3f}s")
+        print(f"  Total execution time: {time.time() - start:.3f}s")
         self.img = csc_out
         self.save()
         return self.img
