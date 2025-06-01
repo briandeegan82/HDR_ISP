@@ -13,6 +13,7 @@ Author: x10xEngineers
 import math
 import numpy as np
 import time
+from . import clahe_cy  # Import the Cython module
 
 
 class CLAHE:
@@ -74,7 +75,7 @@ class CLAHE:
         """
         # Computing histograms--hist will have bincounts
         hist_start = time.time()
-        hist, _ = np.histogram(tiled_array, bins=256, range=(0, 255))
+        hist = clahe_cy.compute_histogram_cy(tiled_array)
         hist_time = time.time() - hist_start
         print(f"      Histogram computation: {hist_time:.3f}s")
 
@@ -216,11 +217,22 @@ class CLAHE:
         cdfs = np.cumsum(pdfs, axis=1)
 
         # Generate LUTs for all tiles at once
-        look_up_tables = (cdfs * 255).astype(np.uint8)
-        clip_time = time.time() - clip_start
-        print(f"      Vectorized LUT generation: {clip_time:.3f}s")
-
-        return look_up_tables
+        lut_start = time.time()
+        luts = (cdfs * 255).astype(np.uint8)
+        lut_time = time.time() - lut_start
+        print(f"      Vectorized LUT generation: {lut_time:.3f}s")
+        
+        # Reshape LUTs to match tile grid
+        vert_tiles = math.ceil(self.yuv.shape[0] / self.wind)
+        horiz_tiles = math.ceil(self.yuv.shape[1] / self.wind)
+        luts = luts.reshape(vert_tiles, horiz_tiles, 256)
+        print(f"      LUT shape after reshaping: {luts.shape}")
+        
+        # Verify LUT dimensions
+        if luts.shape[0] != vert_tiles or luts.shape[1] != horiz_tiles:
+            raise ValueError(f"LUT shape mismatch: got {luts.shape}, expected ({vert_tiles}, {horiz_tiles}, 256)")
+        
+        return luts
 
     def apply_clahe(self):
         """
@@ -229,171 +241,125 @@ class CLAHE:
         print("\nCLAHE Processing:")
         total_start = time.time()
         
-        wind = self.wind
-        in_yuv = self.yuv
+        try:
+            wind = self.wind
+            in_yuv = self.yuv
 
-        # Extracting Luminance channel from yuv as LDCI will be applied to Y channel only
-        prep_start = time.time()
-        yuv = in_yuv[:, :, 0]
-        img_height, img_width = yuv.shape
+            # Extracting Luminance channel from yuv as LDCI will be applied to Y channel only
+            prep_start = time.time()
+            yuv = in_yuv[:, :, 0]
+            img_height, img_width = yuv.shape
 
-        # pipeline specific: if input is in analog yuv
-        if in_yuv.dtype == "float32":
-            yuv = np.round(255 * yuv).astype(np.uint8)
+            # pipeline specific: if input is in analog yuv
+            if in_yuv.dtype == "float32":
+                yuv = np.round(255 * yuv).astype(np.uint8)
 
-        # output clipped equalized histogram
-        out_ceh = np.empty(shape=(img_height, img_width, 3), dtype=np.uint8)
+            # output clipped equalized histogram
+            out_ceh = np.empty(shape=(img_height, img_width, 3), dtype=np.uint8)
 
-        # computing number of tiles (tiles = block = window).
-        vert_tiles = math.ceil(img_height / wind)
-        horiz_tiles = math.ceil(img_width / wind)
-        tile_height = wind
-        tile_width = wind
+            # computing number of tiles (tiles = block = window).
+            vert_tiles = math.ceil(img_height / wind)
+            horiz_tiles = math.ceil(img_width / wind)
+            tile_height = wind
+            tile_width = wind
 
-        # Computing number of columns and rows to be padded in the image
-        # for getting proper block/tile
-        row_pads = tile_height * vert_tiles - img_height
-        col_pads = tile_width * horiz_tiles - img_width
-        pads = (
-            row_pads // 2,
-            row_pads - row_pads // 2,
-            col_pads // 2,
-            col_pads - col_pads // 2,
-        )
+            print(f"Processing image: {img_height}x{img_width} with {vert_tiles}x{horiz_tiles} tiles")
 
-        # Assigning linearized LUT weights to top and left blocks
-        left_lut_weights = np.linspace(1024, 0, tile_width, dtype=np.int32).reshape(
-            (1, -1)
-        )
-        top_lut_weights = np.linspace(1024, 0, tile_height, dtype=np.int32).reshape(
-            (-1, 1)
-        )
+            # Computing number of columns and rows to be padded in the image
+            # for getting proper block/tile
+            row_pads = tile_height * vert_tiles - img_height
+            col_pads = tile_width * horiz_tiles - img_width
+            pads = (
+                row_pads // 2,
+                row_pads - row_pads // 2,
+                col_pads // 2,
+                col_pads - col_pads // 2,
+            )
 
-        # Creating a copy of yuv image
-        y_padded = yuv
-        y_padded = self.pad_array(y_padded, pads=pads)
+            # Assigning linearized LUT weights to top and left blocks
+            left_lut_weights = np.linspace(1024, 0, tile_width, dtype=np.int32).reshape(
+                (1, -1)
+            )
+            top_lut_weights = np.linspace(1024, 0, tile_height, dtype=np.int32).reshape(
+                (-1, 1)
+            )
 
-        # Extract all tiles at once
-        tiles = np.zeros((vert_tiles * horiz_tiles, wind, wind), dtype=np.uint8)
-        for i in range(vert_tiles):
-            for j in range(horiz_tiles):
-                start_row = i * tile_height
-                end_row = (i + 1) * tile_height
-                start_col = j * tile_width
-                end_col = (j + 1) * tile_width
-                tiles[i * horiz_tiles + j] = y_padded[start_row:end_row, start_col:end_col]
+            # Creating a copy of yuv image
+            y_padded = yuv
+            y_padded = self.pad_array(y_padded, pads=pads)
 
-        # Generate LUTs for all tiles at once
-        lut_start = time.time()
-        luts = self.get_tile_lut_vectorized(tiles)
-        luts = luts.reshape(vert_tiles, horiz_tiles, 256)
-        lut_time = time.time() - lut_start
-        print(f"  Vectorized LUT generation for all tiles: {lut_time:.3f}s")
+            # Extract all tiles at once
+            tiles = np.zeros((vert_tiles * horiz_tiles, wind, wind), dtype=np.uint8)
+            for i in range(vert_tiles):
+                for j in range(horiz_tiles):
+                    start_row = i * tile_height
+                    end_row = (i + 1) * tile_height
+                    start_col = j * tile_width
+                    end_col = (j + 1) * tile_width
+                    tiles[i * horiz_tiles + j] = y_padded[start_row:end_row, start_col:end_col]
 
-        # Declaring an empty array for output array after padding is done
-        y_ceh = np.empty_like(y_padded)
+            # Generate LUTs for all tiles at once
+            lut_start = time.time()
+            luts = self.get_tile_lut_vectorized(tiles)
+            lut_time = time.time() - lut_start
+            print(f"Generated LUTs in {lut_time:.3f}s")
 
-        # For loops for processing image array tile by tile
-        interp_start = time.time()
-        for i_row in range(vert_tiles + 1):
-            for i_col in range(horiz_tiles + 1):
-                # Extracting tile/block
-                start_row_index = i_row * tile_height - tile_height // 2
-                end_row_index = min(start_row_index + tile_height, y_padded.shape[0])
-                start_col_index = i_col * tile_width - tile_width // 2
-                end_col_index = min(start_col_index + tile_width, y_padded.shape[1])
-                start_row_index = max(start_row_index, 0)
-                start_col_index = max(start_col_index, 0)
+            # Declaring an empty array for output array after padding is done
+            y_ceh = np.empty_like(y_padded)
 
-                # Extracting the tile for processing
-                y_block = (
-                    y_padded[
-                        start_row_index:end_row_index, start_col_index:end_col_index
-                    ]
-                ).astype(np.uint8)
+            # For loops for processing image array tile by tile
+            interp_start = time.time()
+            print(f"Processing tiles...")
+            
+            for i_row in range(vert_tiles):
+                for i_col in range(horiz_tiles):
+                    try:
+                        # Extracting tile/block
+                        start_row_index = i_row * tile_height
+                        end_row_index = min(start_row_index + tile_height, y_padded.shape[0])
+                        start_col_index = i_col * tile_width
+                        end_col_index = min(start_col_index + tile_width, y_padded.shape[1])
 
-                # checking the position of the block and applying interpolation accordingly
-                if self.is_corner_block(horiz_tiles, vert_tiles, i_col, i_row):
-                    # if the block is present at the corner, no need of interpolation,
-                    # just apply the LUT
-                    lut_y_idx = 0 if i_row == 0 else vert_tiles - 1
-                    lut_x_idx = 0 if i_col == 0 else horiz_tiles - 1
-                    lut = luts[lut_y_idx, lut_x_idx]
-                    y_ceh[
-                        start_row_index:end_row_index, start_col_index:end_col_index
-                    ] = (lut[y_block]).astype(np.float32)
+                        # Extracting the tile for processing
+                        y_block = y_padded[start_row_index:end_row_index, start_col_index:end_col_index].astype(np.uint8)
 
-                elif self.is_top_or_bottom_block(horiz_tiles, vert_tiles, i_col, i_row):
-                    # if the block is present at the top or bottom region,
-                    # current block is updated after interpolating with its left block
-                    lut_y_idx = 0 if i_row == 0 else vert_tiles - 1
-                    left_lut = luts[lut_y_idx, i_col - 1]
-                    current_lut = luts[lut_y_idx, i_col]
-                    y_ceh[
-                        start_row_index:end_row_index, start_col_index:end_col_index
-                    ] = (
-                        (
-                            self.interp_top_bottom_block(
-                                left_lut_weights, y_block, left_lut, current_lut
-                            )
+                        # Process tile using Cython implementation
+                        processed_tile = clahe_cy.process_tile_cy(
+                            y_block, luts, i_row, i_col, horiz_tiles, vert_tiles,
+                            left_lut_weights, top_lut_weights
                         )
-                    ).astype(np.float32)
+                        
+                        # Verify processed tile is valid before assignment
+                        if processed_tile is None or processed_tile.size == 0:
+                            raise ValueError(f"Processed tile is empty or None at position ({i_row}, {i_col})")
+                        
+                        if processed_tile.shape != y_block.shape:
+                            raise ValueError(f"Shape mismatch: processed tile {processed_tile.shape} != input tile {y_block.shape}")
+                        
+                        y_ceh[start_row_index:end_row_index, start_col_index:end_col_index] = processed_tile
+                        
+                    except Exception as e:
+                        print(f"Error processing tile ({i_row}, {i_col}): {str(e)}")
+                        raise
 
-                elif self.is_left_or_right_block(horiz_tiles, vert_tiles, i_col, i_row):
-                    # if the block is present at the left or right region, current block is
-                    # updated after interpolating with its top block
-                    lut_x_idx = 0 if i_col == 0 else horiz_tiles - 1
-                    top_lut = luts[i_row - 1, lut_x_idx]
-                    current_lut = luts[i_row, lut_x_idx]
-                    y_ceh[
-                        start_row_index:end_row_index, start_col_index:end_col_index
-                    ] = (
-                        (
-                            self.interp_left_right_block(
-                                top_lut_weights, y_block, top_lut, current_lut
-                            )
-                        )
-                    ).astype(np.float32)
+            print("All tiles processed. Cropping output...")
+            
+            # Crop the output to original size
+            y_ceh = self.crop(y_ceh, pads)
+            
+            # Copy the processed Y channel to output
+            out_ceh[:, :, 0] = y_ceh
+            out_ceh[:, :, 1] = in_yuv[:, :, 1]
+            out_ceh[:, :, 2] = in_yuv[:, :, 2]
 
-                else:
-                    # check to see if the block is present in the middle region of the image
-                    # the block needs to be updated after getting interpolated with its
-                    # neighboring blocks
-                    tl_lut = luts[i_row - 1, i_col - 1]
-                    top_lut = luts[i_row - 1, i_col]
-                    left_lut = luts[i_row, i_col - 1]
-                    current_lut = luts[i_row, i_col]
-                    y_ceh[
-                        start_row_index:end_row_index, start_col_index:end_col_index
-                    ] = (
-                        (
-                            self.interp_neighbor_block(
-                                left_lut_weights,
-                                top_lut_weights,
-                                y_block,
-                                tl_lut,
-                                top_lut,
-                                left_lut,
-                                current_lut,
-                            )
-                        )
-                    ).astype(np.float32)
+            total_time = time.time() - total_start
+            print(f"CLAHE processing completed in {total_time:.3f}s")
 
-        y_padded = self.crop(y_ceh, pads)
+            return out_ceh
 
-        # pipeline specific: if input is in analog yuv
-        if in_yuv.dtype == "float32":
-            y_padded = np.float32((y_padded) / 255.0)
-            out_ceh = out_ceh.astype("float32")
-
-        out_ceh[:, :, 0] = y_padded
-        out_ceh[:, :, 1] = in_yuv[:, :, 1]
-        out_ceh[:, :, 2] = in_yuv[:, :, 2]
-
-        interp_time = time.time() - interp_start
-        print(f"  Interpolation time: {interp_time:.3f}s")
-        
-        total_time = time.time() - total_start
-        print(f"  Total CLAHE processing time: {total_time:.3f}s")
-        
-        return out_ceh
+        except Exception as e:
+            print(f"\nError in CLAHE processing: {str(e)}")
+            print(f"Image shape: {in_yuv.shape}")
+            print(f"Window size: {wind}")
+            print(f"Clip limit: {self.clip_limit}")
+            raise

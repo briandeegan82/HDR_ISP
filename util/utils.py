@@ -287,19 +287,17 @@ def save_output_array(
 
     # create directory to save array
     if not os.path.exists(OUTPUT_ARRAY_DIR):
-        Path(OUTPUT_ARRAY_DIR).mkdir(parents=True, exist_ok=False)
-
+        os.makedirs(OUTPUT_ARRAY_DIR, exist_ok=True)
+    
     # filename identifies input image and isp pipeline module for which testing
     # vector is generated
-    filename = OUTPUT_ARRAY_DIR + module_name + img_name.split(".")[0]
+    filename = os.path.join(OUTPUT_ARRAY_DIR, f"{module_name}{img_name.split('.')[0]}")
 
     if platform["save_format"] == "npy" or platform["save_format"] == "both":
-
         # save image as npy array
         np.save(filename, output_array.astype("uint16"))
 
     if platform["save_format"] == "png" or platform["save_format"] == "both":
-
         # for 1-channel raw: convert raw image to 8-bit rgb image
         if len(output_array.shape) == 2:
             output_array = apply_cfa(output_array, bitdepth, bayer_pattern)
@@ -310,7 +308,8 @@ def save_output_array(
             output_array = (output_array >> shift_by).astype("uint8")
 
         # save Image as .png
-        plt.imsave(filename + ".png", output_array)
+        plt.imsave(f"{filename}.png", output_array)
+        print(f"Saved output to: {filename}.png")
 
 
 def save_output_array_yuv(img_name, output_array, module_name, platform, conv_std):

@@ -1,36 +1,32 @@
 platform:
-  filename: "frame_0000.raw"
+  filename: RV.raw
   disable_progress_bar: false
   leave_pbar_string: false
   render_3a: false
-  # npy, png or both
   save_format: png
+  rgb_output: true
+  in_file: RV
+  out_file: Out_RV
 
 sensor_info:
-  bayer_pattern: "gbrg"
-  #range: 65536
+  bayer_pattern: gbrg
   hdr_bit_depth: 24
   bit_depth: 12
   width: 1920
   height: 1536
   output_bit_depth: 16
-  sensor: "SVS"
-  endian_type: "ieee-be"
-  data_format: "uint32"
+  sensor: SVS
+  endian_type: ieee-be
+  data_format: uint32
   embedded_rows_top: 0
   embedded_rows_bottom: 0
 
-
 companding:
   is_enable: true
-  pedestal: 0 #240
-  companded: True
+  pedestal: 0
+  companded: true
   companded_pin: [1, 256, 512, 831, 994, 1319, 1984, 2530, 2871, 2968, 3258, 3541, 3855]
   companded_pout: [1, 256, 1024, 3900, 7800, 23400, 87315, 174630, 349260, 548241, 1736000, 5208000, 16777200]
-  #input_range: 65535
-  #output_range: 1048575
-  #num_kneepoints: 10
-  #A: 87.6 # don't touch!
   is_save: false
 
 crop:
@@ -40,9 +36,9 @@ crop:
   crop_y_start: 1
   new_width: 1920
   new_height: 1536
-  is_save: false  
+  is_save: false
 
-dead_pixel_correction: 
+dead_pixel_correction:
   is_enable: false
   dp_threshold: 80
   is_debug: true
@@ -63,23 +59,18 @@ black_level_correction:
 
 oecf:
   is_enable: false
-  # Make sure the LUT has the right bit range i.e. if image is of 10 bit LUT should be from [0 - (2^10)-1]
-  # LUT here does nothing to the sensor response i.e. a value of 800 maps to 800 and 2000 maps to 2000  
-  
   is_save: false
 
 digital_gain:
   is_debug: true
   is_auto: false
   is_enable: true
-  # Array of pre-define Gains
   gain_array: [0.25, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 32, 64]
-  # Index of default gain
   current_gain: 0
   ae_feedback: 0
   is_save: false
 
-lens_shading_correction: 
+lens_shading_correction:
   is_enable: false
   is_save: false
 
@@ -99,28 +90,25 @@ auto_white_balance:
   is_debug: true
   underexposed_percentage: 0.01
   overexposed_percentage: 0.01
-  algorithm: "pca"
-  # grey_world, norm_2, pca
-  percentage: 3.5 # pca
+  algorithm: pca
+  percentage: 3.5
 
 white_balance:
   is_enable: true
-  # is_auto refers to auto white balance module
   is_debug: true
   is_auto: true
-  r_gain: 1.4 #1.24609375
-  b_gain: 1.4 #2.80859375
+  r_gain: 1.4
+  b_gain: 1.4
   is_save: false
 
 demosaic:
   is_save: false
 
 color_correction_matrix:
-  #Row sum to 1 convention
   is_enable: true
-  corrected_red: [1.0, 0.0, 0.0] #[1.660, -0.527, -0.133]
-  corrected_green: [0.0, 1.0, 0.0] #[-0.408, 1.563, -0.082]
-  corrected_blue: [0.0, 0.0, 1.0] #[-0.055, -1.641, 2.695]
+  corrected_red: [1.0, 0.0, 0.0]
+  corrected_green: [0.0, 1.0, 0.0]
+  corrected_blue: [0.0, 0.0, 1.0]
   is_save: false
 
 gamma_correction:
@@ -133,32 +121,27 @@ auto_exposure:
   center_illuminance: 90
   histogram_skewness: 0.9
 
-# Example usage in ISP pipeline
 hdr_durand:
   is_enable: true
-  is_save: True
-  is_debug: True
+  is_save: true
+  is_debug: true
   sigma_space: 20
   sigma_color: 0.4
   contrast_factor: 1.5
   downsample_factor: 4
 
-
-color_space_conversion: 
+color_space_conversion:
   conv_standard: 12
-  # Bt.709 HD =   1
-  # Bt.601/4407 = 2
   is_save: false
 
 color_saturation_enhancement:
   is_enable: true
   saturation_gain: 1.4
 
-
 ldci:
   is_enable: true
-  clip_limit: 1.0
-  wind: 128
+  clip_limit: 2.0
+  wind: 8
   is_save: false
 
 sharpen:
@@ -169,12 +152,11 @@ sharpen:
 
 2d_noise_reduction:
   is_enable: false
-  # nlm
   window_size: 9
   patch_size: 5
   wts: 10
   is_save: false
-  
+
 rgb_conversion:
   is_enable: true
   is_save: false
@@ -183,17 +165,14 @@ scale:
   is_enable: false
   is_debug: true
   new_width: 1920
-  new_height: 1080   
+  new_height: 1080
   is_hardware: true
-  # Nearest_Neighbor # Bilinear
-  algorithm: "Nearest_Neighbor"
-  upscale_method: "Nearest_Neighbor"
-  downscale_method: "Bilinear"  
+  algorithm: Nearest_Neighbor
+  upscale_method: Nearest_Neighbor
+  downscale_method: Bilinear
   is_save: false
 
 yuv_conversion_format:
-  # The conversion wont run if csc is false
-  is_enable: true
+  is_enable: false
   conv_type: '444'
   is_save: false
-

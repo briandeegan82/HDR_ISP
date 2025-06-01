@@ -56,12 +56,18 @@ class InfiniteISP:
     Infinite-ISP Pipeline
     """
 
-    def __init__(self, data_path, config_path):
+    def __init__(self, data_path, config_path, memory_mapped_data=None):
         """
         Constructor: Initialize with config and raw file path
         and Load configuration parameter from yaml file
+        
+        Args:
+            data_path (str): Path to the data directory
+            config_path (str): Path to the configuration file
+            memory_mapped_data (numpy.memmap, optional): Memory-mapped array for large files
         """
         self.data_path = data_path
+        self.memory_mapped_data = memory_mapped_data
         self.load_config(config_path)
 
     def load_config(self, config_path):
@@ -128,7 +134,13 @@ class InfiniteISP:
         bit_depth = self.sensor_info["bit_depth"]
 
         # Load Raw
-        if path_object.suffix == ".raw":
+        if self.memory_mapped_data is not None:
+            # Use memory-mapped data if provided
+            if bit_depth > 8:
+                self.raw = self.memory_mapped_data.reshape((height, width))
+            else:
+                self.raw = self.memory_mapped_data.reshape((height, width)).astype(np.uint16)
+        elif path_object.suffix == ".raw":
             if bit_depth > 8:
                 self.raw = np.fromfile(raw_path, dtype='>u2').reshape(
                     (height, width)
@@ -172,6 +184,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_crop.png")
             stage_count += 1
+        del crop  # Clean up crop object
 
         # =====================================================================
         #  Dead pixels correction
@@ -180,6 +193,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_dead_pixel_correction.png")
             stage_count += 1
+        del dpc  # Clean up dpc object
 
         # =====================================================================
         # Black level correction
@@ -188,6 +202,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_black_level_correction.png")
             stage_count += 1
+        del blc  # Clean up blc object
 
         # =====================================================================
         # decompanding
@@ -196,6 +211,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_decompanding.png")
             stage_count += 1
+        del cmpd  # Clean up cmpd object
 
         # =====================================================================
         # OECF
@@ -204,6 +220,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_oecf.png")
             stage_count += 1
+        del oecf  # Clean up oecf object
 
         # =====================================================================
         # Digital Gain
@@ -212,6 +229,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_digital_gain.png")
             stage_count += 1
+        del dga  # Clean up dga object
 
         # =====================================================================
         # Lens shading correction
@@ -220,6 +238,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_lens_shading_correction.png")
             stage_count += 1
+        del lsc  # Clean up lsc object
 
         # =====================================================================
         # Bayer noise reduction
@@ -228,11 +247,13 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_bayer_noise_reduction.png")
             stage_count += 1
+        del bnr  # Clean up bnr object
 
         # =====================================================================
         # Auto White Balance
         awb = AWB(img, self.sensor_info, self.parm_awb)
         self.awb_gains = awb.execute()
+        del awb  # Clean up awb object
 
         # =====================================================================
         # White balancing
@@ -241,6 +262,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_white_balance.png")
             stage_count += 1
+        del wbc  # Clean up wbc object
 
         # =====================================================================
         # HDR tone mapping
@@ -249,6 +271,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_hdr_tone_mapping.png")
             stage_count += 1
+        del hdr  # Clean up hdr object
         print("HDR Image mean: ", np.mean(img))
 
         # =====================================================================
@@ -258,6 +281,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_demosaic.png")
             stage_count += 1
+        del cfa_inter  # Clean up cfa_inter object
         print("Demosaiced Image mean: ", np.mean(img))
 
         # =====================================================================
@@ -267,6 +291,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_color_correction_matrix.png")
             stage_count += 1
+        del ccm  # Clean up ccm object
         print("CCM Image mean: ", np.mean(img))
 
         # =====================================================================
@@ -276,12 +301,14 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_gamma_correction.png")
             stage_count += 1
+        del gmc  # Clean up gmc object
         print("Gamma Image mean: ", np.mean(img))
 
         # =========================
         # Auto-Exposure
         aef = AE(img, self.sensor_info, self.parm_ae)
         self.ae_feedback = aef.execute()
+        del aef  # Clean up aef object
         print("AE Feedback: ", self.ae_feedback)
 
         # =====================================================================
@@ -291,6 +318,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_color_space_conversion.png")
             stage_count += 1
+        del csc  # Clean up csc object
         print("CSC Image mean: ", np.mean(img))
 
         # =====================================================================
@@ -306,6 +334,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_ldci.png")
             stage_count += 1
+        del ldci  # Clean up ldci object
 
         # =====================================================================
         # Sharpening
@@ -320,6 +349,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_sharpening.png")
             stage_count += 1
+        del sharp  # Clean up sharp object
 
         # =====================================================================
         # 2d noise reduction
@@ -334,6 +364,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_2d_noise_reduction.png")
             stage_count += 1
+        del nr2d  # Clean up nr2d object
 
         # =====================================================================
         # RGB conversion
@@ -344,6 +375,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_rgb_conversion.png")
             stage_count += 1
+        del rgbc  # Clean up rgbc object
 
         # =====================================================================
         # Scaling
@@ -358,6 +390,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_scaling.png")
             stage_count += 1
+        del scale  # Clean up scale object
 
         # =====================================================================
         # YUV saving format 444, 422 etc
@@ -366,6 +399,7 @@ class InfiniteISP:
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_yuv_conversion.png")
             stage_count += 1
+        del yuv  # Clean up yuv object
 
         # only to view image if csc is off it does nothing
         out_img = img
@@ -386,14 +420,18 @@ class InfiniteISP:
                     img, image_height, image_width, yuv_custom_format
                 )
 
+                rgbc = RGBC(img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc)
                 rgbc.yuv_img = yuv_conv
                 out_rgb = rgbc.yuv_to_rgb()
+                del rgbc  # Clean up rgbc object
 
             elif self.parm_rgb["is_enable"] is False:
                 # RGB_C is disabled: Output is 3D - YUV
                 # To display : Only convert it to RGB
+                rgbc = RGBC(img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc)
                 rgbc.yuv_img = img
                 out_rgb = rgbc.yuv_to_rgb()
+                del rgbc  # Clean up rgbc object
 
             else:
                 # RGB_C is enabled: Output is RGB
