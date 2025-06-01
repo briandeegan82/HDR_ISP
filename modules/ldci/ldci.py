@@ -28,15 +28,15 @@ class LDCI:
         """
         Applying LDCI module to the given image
         """
-        print("\nLDCI Processing:")
-        print(f"  Window size: {self.parm_ldci['wind']}")
-        print(f"  Clip limit: {self.parm_ldci['clip_limit']}")
+        #print("\nLDCI Processing:")
+        #print(f"  Window size: {self.parm_ldci['wind']}")
+        #print(f"  Clip limit: {self.parm_ldci['clip_limit']}")
         
         clahe_start = time.time()
         clahe = CLAHE(self.yuv, self.platform, self.sensor_info, self.parm_ldci)
         out_ceh = clahe.apply_clahe()
         clahe_time = time.time() - clahe_start
-        print(f"  CLAHE processing time: {clahe_time:.3f}s")
+        #print(f"  CLAHE processing time: {clahe_time:.3f}s")
 
         return out_ceh
 
@@ -54,7 +54,7 @@ class LDCI:
                 self.conv_std,
             )
             save_time = time.time() - save_start
-            print(f"  Save time: {save_time:.3f}s")
+            #print(f"  Save time: {save_time:.3f}s")
 
     def execute(self):
         """

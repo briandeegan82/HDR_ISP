@@ -77,7 +77,7 @@ class CLAHE:
         hist_start = time.time()
         hist = clahe_cy.compute_histogram_cy(tiled_array)
         hist_time = time.time() - hist_start
-        print(f"      Histogram computation: {hist_time:.3f}s")
+        #print(f"      Histogram computation: {hist_time:.3f}s")
 
         clip_start = time.time()
         clip_limit = self.clip_limit
@@ -90,7 +90,7 @@ class CLAHE:
         clipped_hist = np.clip(hist, 0, clip_limit)
         num_clipped_pixels = (hist - clipped_hist).sum()
         clip_time = time.time() - clip_start
-        print(f"      Histogram clipping: {clip_time:.3f}s")
+        #print(f"      Histogram clipping: {clip_time:.3f}s")
 
         # Adding clipped pixels to each bin and getting its sum for normalization
         norm_start = time.time()
@@ -98,16 +98,16 @@ class CLAHE:
         pdf = hist / hist.sum()
         cdf = np.cumsum(pdf)
         norm_time = time.time() - norm_start
-        print(f"      PDF/CDF computation: {norm_time:.3f}s")
+        #print(f"      PDF/CDF computation: {norm_time:.3f}s")
 
         # Computing cdf and getting the LUT for the array
         lut_start = time.time()
         look_up_table = (cdf * 255).astype(np.uint8)
         lut_time = time.time() - lut_start
-        print(f"      LUT finalization: {lut_time:.3f}s")
+        #print(f"      LUT finalization: {lut_time:.3f}s")
 
         total_time = time.time() - hist_start
-        print(f"    Total LUT generation time: {total_time:.3f}s")
+        #print(f"    Total LUT generation time: {total_time:.3f}s")
 
         return look_up_table
 
@@ -200,7 +200,7 @@ class CLAHE:
             1, tiles_flat
         )
         hist_time = time.time() - hist_start
-        print(f"      Vectorized histogram computation: {hist_time:.3f}s")
+        #print(f"      Vectorized histogram computation: {hist_time:.3f}s")
 
         clip_start = time.time()
         clip_limit = self.clip_limit
@@ -220,13 +220,13 @@ class CLAHE:
         lut_start = time.time()
         luts = (cdfs * 255).astype(np.uint8)
         lut_time = time.time() - lut_start
-        print(f"      Vectorized LUT generation: {lut_time:.3f}s")
+        #print(f"      Vectorized LUT generation: {lut_time:.3f}s")
         
         # Reshape LUTs to match tile grid
         vert_tiles = math.ceil(self.yuv.shape[0] / self.wind)
         horiz_tiles = math.ceil(self.yuv.shape[1] / self.wind)
         luts = luts.reshape(vert_tiles, horiz_tiles, 256)
-        print(f"      LUT shape after reshaping: {luts.shape}")
+        #print(f"      LUT shape after reshaping: {luts.shape}")
         
         # Verify LUT dimensions
         if luts.shape[0] != vert_tiles or luts.shape[1] != horiz_tiles:
@@ -238,7 +238,7 @@ class CLAHE:
         """
         Applying clahe algorithm for contrast enhancement
         """
-        print("\nCLAHE Processing:")
+        #print("\nCLAHE Processing:")
         total_start = time.time()
         
         try:
@@ -263,7 +263,7 @@ class CLAHE:
             tile_height = wind
             tile_width = wind
 
-            print(f"Processing image: {img_height}x{img_width} with {vert_tiles}x{horiz_tiles} tiles")
+            #print(f"Processing image: {img_height}x{img_width} with {vert_tiles}x{horiz_tiles} tiles")
 
             # Computing number of columns and rows to be padded in the image
             # for getting proper block/tile
@@ -302,14 +302,14 @@ class CLAHE:
             lut_start = time.time()
             luts = self.get_tile_lut_vectorized(tiles)
             lut_time = time.time() - lut_start
-            print(f"Generated LUTs in {lut_time:.3f}s")
+            #print(f"Generated LUTs in {lut_time:.3f}s")
 
             # Declaring an empty array for output array after padding is done
             y_ceh = np.empty_like(y_padded)
 
             # For loops for processing image array tile by tile
             interp_start = time.time()
-            print(f"Processing tiles...")
+            #print(f"Processing tiles...")
             
             for i_row in range(vert_tiles):
                 for i_col in range(horiz_tiles):
@@ -342,7 +342,7 @@ class CLAHE:
                         print(f"Error processing tile ({i_row}, {i_col}): {str(e)}")
                         raise
 
-            print("All tiles processed. Cropping output...")
+            #print("All tiles processed. Cropping output...")
             
             # Crop the output to original size
             y_ceh = self.crop(y_ceh, pads)
@@ -353,7 +353,7 @@ class CLAHE:
             out_ceh[:, :, 2] = in_yuv[:, :, 2]
 
             total_time = time.time() - total_start
-            print(f"CLAHE processing completed in {total_time:.3f}s")
+            #print(f"CLAHE processing completed in {total_time:.3f}s")
 
             return out_ceh
 

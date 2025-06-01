@@ -56,22 +56,22 @@ class RGBConversion:
         # Reshape and subtract offset in one step
         mat_2d = self.yuv_img.reshape(-1, 3) - self.offset
         mat2d_t = mat_2d.T
-        print(f"  Matrix reshaping and offset time: {(time.time() - start_reshape)*1000:.2f}ms")
+        #print(f"  Matrix reshaping and offset time: {(time.time() - start_reshape)*1000:.2f}ms")
 
         # Time matrix multiplication
         start_mult = time.time()
         # Use optimized matrix multiplication
         rgb_2d = np.matmul(self.yuv2rgb_mat, mat2d_t)
         rgb_2d = rgb_2d >> 6
-        print(f"  Matrix multiplication time: {(time.time() - start_mult)*1000:.2f}ms")
+        #print(f"  Matrix multiplication time: {(time.time() - start_mult)*1000:.2f}ms")
 
         # Time final conversion
         start_final = time.time()
         # Combine operations and use optimized numpy functions
         self.yuv_img = np.clip(rgb_2d.T.reshape(self.yuv_img.shape), 0, 255).astype(np.uint8)
-        print(f"  Final conversion time: {(time.time() - start_final)*1000:.2f}ms")
+        #print(f"  Final conversion time: {(time.time() - start_final)*1000:.2f}ms")
         
-        print(f"  Total RGB conversion time: {(time.time() - start_total)*1000:.2f}ms")
+        #print(f"  Total RGB conversion time: {(time.time() - start_total)*1000:.2f}ms")
         return self.yuv_img
 
     def save(self):

@@ -91,7 +91,7 @@ class Malvar:
         r_channel = raw_in * mask_r
         g_channel = raw_in * mask_g
         b_channel = raw_in * mask_b
-        print(f"  Channel separation time: {time.time() - start:.3f}s")
+        #print(f"  Channel separation time: {time.time() - start:.3f}s")
 
         # Creating g_channel channel first after applying g_at_r_and_b filter
         start = time.time()
@@ -104,7 +104,7 @@ class Malvar:
         
         # Combine original and filtered values
         g_channel = g_channel * g_mask + filtered_g * non_g_mask
-        print(f"  Green channel interpolation time: {time.time() - start:.3f}s")
+        #print(f"  Green channel interpolation time: {time.time() - start:.3f}s")
 
         # Applying other linear filters - optimized using cv2.filter2D
         start = time.time()
@@ -115,7 +115,7 @@ class Malvar:
         rb_at_g_rbbr = cv2.filter2D(raw_in, -1, r_at_gr_and_b_at_gb, borderType=cv2.BORDER_REFLECT)
         rb_at_g_brrb = cv2.filter2D(raw_in, -1, r_at_gb_and_b_at_gr, borderType=cv2.BORDER_REFLECT)
         rb_at_gr_bbrr = cv2.filter2D(raw_in, -1, r_at_b_and_b_at_r, borderType=cv2.BORDER_REFLECT)
-        print(f"  Red/Blue channel interpolation time: {time.time() - start:.3f}s")
+        #print(f"  Red/Blue channel interpolation time: {time.time() - start:.3f}s")
 
         # After convolving the input raw image with rest of the filters,
         # now we have the respective interpolated data, now we just have
@@ -135,7 +135,7 @@ class Malvar:
         r_cols = r_cols_mask[np.newaxis, :]
         b_rows = b_rows_mask[:, np.newaxis]
         b_cols = b_cols_mask[np.newaxis, :]
-        print(f"  Row/Column mask creation time: {time.time() - start:.3f}s")
+        #print(f"  Row/Column mask creation time: {time.time() - start:.3f}s")
 
         # For R channel we have to update pixels at [r_channel rows
         # and b_channel cols] & at [b_channel rows and r_channel cols]
@@ -170,11 +170,11 @@ class Malvar:
                 )
             )
         )
-        print(f"  Channel combination time: {time.time() - start:.3f}s")
+        #print(f"  Channel combination time: {time.time() - start:.3f}s")
 
         demos_out[:, :, 0] = r_channel
         demos_out[:, :, 1] = g_channel
         demos_out[:, :, 2] = b_channel
 
-        print(f"  Total CFA interpolation time: {time.time() - total_start:.3f}s")
+        #print(f"  Total CFA interpolation time: {time.time() - total_start:.3f}s")
         return demos_out

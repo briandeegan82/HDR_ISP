@@ -56,21 +56,21 @@ class ColorSpaceConversion:
         start = time.time()
         # make nx3 2d matrix of image and convert to 3xn for matrix multiplication
         mat2d_t = self.img.reshape(-1, 3).T
-        print(f"  Matrix reshape and transpose time: {time.time() - start:.3f}s")
+        #print(f"  Matrix reshape and transpose time: {time.time() - start:.3f}s")
 
         start = time.time()
         # convert to YUV and combine bit depth conversion
         yuv_2d = np.matmul(self.rgb2yuv_mat, mat2d_t)
         yuv_2d = np.float64(yuv_2d) / (2**8)
         yuv_2d = np.round(yuv_2d)  # More efficient than where/floor/ceil
-        print(f"  Matrix multiplication and bit depth conversion time: {time.time() - start:.3f}s")
+        #print(f"  Matrix multiplication and bit depth conversion time: {time.time() - start:.3f}s")
 
         # color saturation enhancment block:
         if self.parm_cse['is_enable']:
             start = time.time()
             gain = self.parm_cse['saturation_gain']
             yuv_2d[1:, :] *= gain  # Apply gain to both U and V channels at once
-            print(f"  Color saturation enhancement time: {time.time() - start:.3f}s")
+            #print(f"  Color saturation enhancement time: {time.time() - start:.3f}s")
 
         start = time.time()
         # Combine black-level/DC offset and final normalization
@@ -83,9 +83,9 @@ class ColorSpaceConversion:
         yuv2d_t = np.round(yuv2d_t / (2 ** (self.bit_depth - 8)))
         yuv2d_t = np.clip(yuv2d_t, 0, 255)
         self.img = yuv2d_t.reshape(self.img.shape).astype(np.uint8)
-        print(f"  Final processing time: {time.time() - start:.3f}s")
+        #print(f"  Final processing time: {time.time() - start:.3f}s")
 
-        print(f"  Total RGB to YUV conversion time: {time.time() - total_start:.3f}s")
+        #print(f"  Total RGB to YUV conversion time: {time.time() - total_start:.3f}s")
         return self.img
 
     def save(self):

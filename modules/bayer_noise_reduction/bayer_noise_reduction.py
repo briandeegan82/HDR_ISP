@@ -105,9 +105,9 @@ class BayerNoiseReduction:
             g_mask[1:height:2, 1:width:2] = 1
         else:
             raise ValueError(f"Unknown bayer pattern: {bayer_pattern}")
-        print(f"Raw R pixels: mean={raw_img[r_mask==1].mean():.4f}, min={raw_img[r_mask==1].min():.4f}, max={raw_img[r_mask==1].max():.4f}")
-        print(f"Raw G pixels: mean={raw_img[g_mask==1].mean():.4f}, min={raw_img[g_mask==1].min():.4f}, max={raw_img[g_mask==1].max():.4f}")
-        print(f"Raw B pixels: mean={raw_img[b_mask==1].mean():.4f}, min={raw_img[b_mask==1].min():.4f}, max={raw_img[b_mask==1].max():.4f}")
+        #print(f"Raw R pixels: mean={raw_img[r_mask==1].mean():.4f}, min={raw_img[r_mask==1].min():.4f}, max={raw_img[r_mask==1].max():.4f}")
+        #print(f"Raw G pixels: mean={raw_img[g_mask==1].mean():.4f}, min={raw_img[g_mask==1].min():.4f}, max={raw_img[g_mask==1].max():.4f}")
+        #print(f"Raw B pixels: mean={raw_img[b_mask==1].mean():.4f}, min={raw_img[b_mask==1].min():.4f}, max={raw_img[b_mask==1].max():.4f}")
         
         # Convert to float32 and normalize only if needed
         in_img = np.float32(self.img)

@@ -1,5 +1,120 @@
 # HDR-ISP
-This project is based on Infinite-ISP bu 10X Engineering, which in turn is based on FastOpenISP and OpenISP. Really standing on the shoulders of giants here.
+
+A high dynamic range image signal processing pipeline based on Infinite-ISP by 10X Engineering, which in turn is based on FastOpenISP and OpenISP.
+
+## Features
+
+### Core Features
+- Full-stack ISP development platform
+- Complete camera pipeline modules in Python
+- HDR tone mapping using Durand's algorithm
+- Decompanding function for linearizing companded data
+- Modified bit depth support for the ISP pipeline
+
+### Planned Features
+- HDR multicapture merge
+- Lens shading correction
+- Code optimizations
+
+## Quick Start
+
+### Prerequisites
+- Python 3.9.12
+- pip package manager
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/your-username/HDR_ISP.git
+cd HDR_ISP
+```
+
+2. Create and activate a virtual environment (recommended):
+```bash
+python -m venv venv_py38
+# On Windows
+venv_py38\Scripts\activate
+# On Linux/Mac
+source venv_py38/bin/activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+### Running the Pipeline
+
+#### Single Image Processing
+```bash
+python isp_pipeline.py --config ./config/svs_cam.yml --data ./in_frames/hdr_mode/ --filename RV.raw
+```
+
+Optional arguments:
+- `--save-intermediate`: Save intermediate images at each stage
+- `--profile`: Profile color space conversion operations
+- `--memory-map`: Use memory mapping for large files
+- `--memory-threshold`: File size threshold in MB to trigger memory mapping (default: 100.0)
+
+#### Multiple Image Processing
+```bash
+python isp_pipeline_mulitple_images.py
+```
+
+## Project Structure
+
+```
+HDR_ISP/
+├── config/                 # Configuration files
+├── in_frames/             # Input image directory
+│   └── hdr_mode/         # HDR mode input frames
+├── out_frames/           # Output processed images
+├── module_output/        # Module-specific outputs
+├── modules/              # Core ISP modules
+├── util/                 # Utility functions
+├── isp_pipeline.py       # Main pipeline script
+├── infinite_isp.py       # Core ISP implementation
+└── requirements.txt      # Python dependencies
+```
+
+## Configuration
+
+The ISP parameters are defined in YAML configuration files located in the `config/` directory. Key configuration sections include:
+
+- Platform settings
+- Sensor information
+- Pipeline modules (crop, dead pixel correction, black level correction, etc.)
+- HDR processing parameters
+
+See the [User Guide](#user-guide) section for detailed configuration options.
+
+## Development
+
+### Adding New Features
+1. Fork the repository
+2. Create a feature branch
+3. Implement your changes
+4. Submit a pull request
+
+### Running Tests
+```bash
+# Add test instructions when available
+```
+
+## Contributing
+
+Please read [CONTRIBUTIONS.md](CONTRIBUTIONS.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+
+This project is licensed under the terms of the license included in the [LICENSE](LICENSE) file.
+
+## Acknowledgments
+
+- 10X Engineering for Infinite-ISP
+- FastOpenISP
+- OpenISP
 
 ## Modifications
 The main modifications compared to Infinite-ISP are:
@@ -26,8 +141,8 @@ Infinite-ISP is a full-stack ISP development platform - from algorithm developme
 | -------------  | ------------- |
 | **[Infinite-ISP_AlgorithmDesign](https://github.com/10x-Engineers/Infinite-ISP)** :anchor:                    | Python based model of the Infinite-ISP pipeline for algorithm development |
 | **[Infinite-ISP_ReferenceModel](https://github.com/10x-Engineers/Infinite-ISP_ReferenceModel)**                      | Python based fixed-point model of the Infinite-ISP pipeline for hardware implementation |
-| **[Infinite-ISP_FPGABinaries](https://github.com/10x-Engineers/Infinite-ISP_FPGABinaries)**                                      |FPGA binaries (bitstream + firmware executable) for the Xilinx® Kria KV260’s XCK26 Zynq UltraScale + MPSoC|
-| **[Infinite-ISP_Firmware](https://github.com/10x-Engineers/Infinite-ISP_Firmware)**                                      | Firmware for the Kria kV260’s embedded Arm® Cortex®A53 processor|
+| **[Infinite-ISP_FPGABinaries](https://github.com/10x-Engineers/Infinite-ISP_FPGABinaries)**                                      |FPGA binaries (bitstream + firmware executable) for the Xilinx® Kria KV260's XCK26 Zynq UltraScale + MPSoC|
+| **[Infinite-ISP_Firmware](https://github.com/10x-Engineers/Infinite-ISP_Firmware)**                                      | Firmware for the Kria kV260's embedded Arm® Cortex®A53 processor|
 | **[Infinite-ISP_TuningTool](https://github.com/10x-Engineers/Infinite-ISP_TuningTool)**                              | Collection of calibration and analysis tools for the Infinite-ISP |
 
 
@@ -60,7 +175,7 @@ InfiniteISP also tries to simulate the **3A-Algorithms**.
 | Lens Shading Correction                       | To Be Implemented  | ---- |
 | Bayer Noise Reduction                         | [Green Channel Guiding Denoising by Tan et al](https://www.researchgate.net/publication/261753644_Green_Channel_Guiding_Denoising_on_Bayer_Image)  | Chroma noise filtering |
 | White Balance                                 | WB gains from config file  | Yes |
-| CFA Interpolation                             | [Malwar He Cutler’s](https://www.ipol.im/pub/art/2011/g_mhcd/article.pdf ) demosaicing algo  | Yes <br> - Malvar He Cutler|
+| CFA Interpolation                             | [Malwar He Cutler's](https://www.ipol.im/pub/art/2011/g_mhcd/article.pdf ) demosaicing algo  | Yes <br> - Malvar He Cutler|
 | **3A - Algorithms**                           | **AE & AWB** | ---- |
 | Auto White Balance                            | - [Grey World](https://www.sciencedirect.com/science/article/abs/pii/0016003280900587) <br> - [Norm 2](https://library.imaging.org/admin/apis/public/api/ist/website/downloadArticle/cic/12/1/art00008) <br> - [PCA algorithm](https://opg.optica.org/josaa/viewmedia.cfm?uri=josaa-31-5-1049&seq=0) | ---- |
 | Auto Exposure                                 | - [Auto Exposure](https://www.atlantis-press.com/article/25875811.pdf) based on skewness | ---- |
@@ -138,7 +253,7 @@ git submodule update --init --recursive
 ``` 
 
 
-4. After adding git repository as a submodule update `DATASET_PATH` variable in [isp_pipeline_dataset.py](isp_pipeline_dataset.py) to `./in_frames/normal/<dataset_name>`. Git does not allow to import a repository’s subfolder using a submodule. You can only add an entire repository and then access the folder. If you want to use images from a subfolder of a submodule modify the `DATASET_PATH` variable in [isp_pipeline_dataset.py](isp_pipeline_dataset.py)  or [video_processing.py](video_processing.py)  accordingly.
+4. After adding git repository as a submodule update `DATASET_PATH` variable in [isp_pipeline_dataset.py](isp_pipeline_dataset.py) to `./in_frames/normal/<dataset_name>`. Git does not allow to import a repository's subfolder using a submodule. You can only add an entire repository and then access the folder. If you want to use images from a subfolder of a submodule modify the `DATASET_PATH` variable in [isp_pipeline_dataset.py](isp_pipeline_dataset.py)  or [video_processing.py](video_processing.py)  accordingly.
 
 ```python
 DATASET_PATH = './in_frames/normal/<dataset_name>'
