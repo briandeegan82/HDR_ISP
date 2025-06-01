@@ -39,6 +39,9 @@ class AutoWhiteBalance:
         """
         Determine white balance gains calculated using AWB Algorithms to Raw Image
         """
+        total_start = time.time()
+        print("\nAuto White Balance Profiling:")
+        print("--------------------------------")
 
         max_pixel_value = 2**self.bit_depth
         approx_percentage = max_pixel_value / 100
@@ -52,6 +55,7 @@ class AutoWhiteBalance:
             print("   - AWB - Underexposed Pixel Limit = ", underexposed_limit)
             print("   - AWB - Overexposed Pixel Limit  = ", overexposed_limit)
 
+        start = time.time()
         if self.bayer == "rggb":
 
             r_channel = self.raw[0::2, 0::2]
@@ -79,8 +83,9 @@ class AutoWhiteBalance:
 
         g_channel = (gr_channel + gb_channel) / 2
         bayer_channels = np.dstack((r_channel, g_channel, b_channel))
-        # print(bayer_channels.shape)
+        print(f"  Channel separation time: {time.time() - start:.3f}s")
 
+        start = time.time()
         bad_pixels = np.sum(
             np.where(
                 (bayer_channels < underexposed_limit)
@@ -91,14 +96,16 @@ class AutoWhiteBalance:
             axis=2,
         )
         self.flatten_img = bayer_channels[bad_pixels == 0]
-        # print(self.flatten_raw.shape)
+        print(f"  Bad pixel removal time: {time.time() - start:.3f}s")
 
+        start = time.time()
         if self.algorithm == "norm_2":
             rgain, bgain = self.apply_norm_gray_world()
         elif self.algorithm == "pca":
             rgain, bgain = self.apply_pca_illuminant_estimation()
         else:
             rgain, bgain = self.apply_gray_world()
+        print(f"  {self.algorithm} algorithm execution time: {time.time() - start:.3f}s")
 
         # Check if r_gain and b_gain go out of bound
         rgain = 1 if rgain <= 1 else rgain
@@ -109,11 +116,12 @@ class AutoWhiteBalance:
             print("   - AWB - RGain = ", rgain)
             print("   - AWB - Bgain = ", bgain)
 
+        print(f"  Total AWB execution time: {time.time() - total_start:.3f}s")
+        print("--------------------------------\n")
         return rgain, bgain
 
     def apply_gray_world(self):
         """
-
         Gray World White Balance:
         Gray world algorithm calculates white balance (G/R and G/B)
         by average values of RGB channels

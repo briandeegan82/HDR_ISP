@@ -68,7 +68,24 @@ class InfiniteISP:
         """
         self.data_path = data_path
         self.memory_mapped_data = memory_mapped_data
+        self._module_instances = {}  # Module instance pool
         self.load_config(config_path)
+
+    def _get_module(self, module_class, *args, **kwargs):
+        """
+        Get or create module instance from the pool
+        
+        Args:
+            module_class: The class of the module to get/create
+            *args: Arguments to pass to the module constructor
+            **kwargs: Keyword arguments to pass to the module constructor
+            
+        Returns:
+            An instance of the requested module
+        """
+        if module_class not in self._module_instances:
+            self._module_instances[module_class] = module_class(*args, **kwargs)
+        return self._module_instances[module_class]
 
     def load_config(self, config_path):
         """
@@ -179,269 +196,185 @@ class InfiniteISP:
 
         # =====================================================================
         # Cropping
-        crop = Crop(self.raw, self.platform, self.sensor_info, self.parm_cro)
+        crop = self._get_module(Crop, self.raw, self.platform, self.sensor_info, self.parm_cro)
         img = crop.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_crop.png")
             stage_count += 1
-        del crop  # Clean up crop object
 
         # =====================================================================
         #  Dead pixels correction
-        dpc = DPC(img, self.sensor_info, self.parm_dpc, self.platform)
+        dpc = self._get_module(DPC, img, self.sensor_info, self.parm_dpc, self.platform)
         img = dpc.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_dead_pixel_correction.png")
             stage_count += 1
-        del dpc  # Clean up dpc object
 
         # =====================================================================
         # Black level correction
-        blc = BLC(img, self.platform, self.sensor_info, self.parm_blc)
+        blc = self._get_module(BLC, img, self.platform, self.sensor_info, self.parm_blc)
         img = blc.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_black_level_correction.png")
             stage_count += 1
-        del blc  # Clean up blc object
 
         # =====================================================================
         # decompanding
-        cmpd = PWC(img, self.platform, self.sensor_info, self.parm_cmpd)
+        cmpd = self._get_module(PWC, img, self.platform, self.sensor_info, self.parm_cmpd)
         img = cmpd.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_decompanding.png")
             stage_count += 1
-        del cmpd  # Clean up cmpd object
 
         # =====================================================================
         # OECF
-        oecf = OECF(img, self.platform, self.sensor_info, self.parm_oec)
+        oecf = self._get_module(OECF, img, self.platform, self.sensor_info, self.parm_oec)
         img = oecf.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_oecf.png")
             stage_count += 1
-        del oecf  # Clean up oecf object
 
         # =====================================================================
         # Digital Gain
-        dga = DG(img, self.platform, self.sensor_info, self.parm_dga)
+        dga = self._get_module(DG, img, self.platform, self.sensor_info, self.parm_dga)
         img, self.dga_current_gain = dga.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_digital_gain.png")
             stage_count += 1
-        del dga  # Clean up dga object
 
         # =====================================================================
         # Lens shading correction
-        lsc = LSC(img, self.platform, self.sensor_info, self.parm_lsc)
+        lsc = self._get_module(LSC, img, self.platform, self.sensor_info, self.parm_lsc)
         img = lsc.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_lens_shading_correction.png")
             stage_count += 1
-        del lsc  # Clean up lsc object
 
         # =====================================================================
         # Bayer noise reduction
-        bnr = BNR(img, self.sensor_info, self.parm_bnr, self.platform)
+        bnr = self._get_module(BNR, img, self.sensor_info, self.parm_bnr, self.platform)
         img = bnr.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_bayer_noise_reduction.png")
             stage_count += 1
-        del bnr  # Clean up bnr object
 
         # =====================================================================
         # Auto White Balance
-        awb = AWB(img, self.sensor_info, self.parm_awb)
+        awb = self._get_module(AWB, img, self.sensor_info, self.parm_awb)
         self.awb_gains = awb.execute()
-        del awb  # Clean up awb object
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_auto_white_balance.png")
+            stage_count += 1
 
         # =====================================================================
-        # White balancing
-        wbc = WB(img, self.platform, self.sensor_info, self.parm_wbc)
-        img = wbc.execute()
+        # White Balance
+        wb = self._get_module(WB, img, self.platform, self.sensor_info, self.parm_wbc)
+        img = wb.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_white_balance.png")
             stage_count += 1
-        del wbc  # Clean up wbc object
 
         # =====================================================================
-        # HDR tone mapping
-        hdr = HDR(img, self.platform, self.sensor_info, self.param_durand)
-        img = hdr.execute()
-        if save_intermediate:
-            util.save_image(img, intermediate_dir / f"{stage_count:02d}_hdr_tone_mapping.png")
-            stage_count += 1
-        del hdr  # Clean up hdr object
-        print("HDR Image mean: ", np.mean(img))
+        # HDR Durand Tone Mapping
+        if self.param_durand["is_enable"]:
+            hdr = self._get_module(HDR, img, self.platform, self.sensor_info, self.param_durand)
+            img = hdr.execute()
+            if save_intermediate:
+                util.save_image(img, intermediate_dir / f"{stage_count:02d}_hdr_durand.png")
+                stage_count += 1
 
         # =====================================================================
-        # CFA demosaicing
-        cfa_inter = Demosaic(img, self.platform, self.sensor_info, self.parm_dem)
-        img = cfa_inter.execute()
+        # CFA interpolation
+        dem = self._get_module(Demosaic, img, self.platform, self.sensor_info, self.parm_dem)
+        img = dem.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_demosaic.png")
             stage_count += 1
-        del cfa_inter  # Clean up cfa_inter object
-        print("Demosaiced Image mean: ", np.mean(img))
 
         # =====================================================================
-        # Color correction matrix
-        ccm = CCM(img, self.platform, self.sensor_info, self.parm_ccm)
+        # Color Correction Matrix
+        ccm = self._get_module(CCM, img, self.platform, self.sensor_info, self.parm_ccm)
         img = ccm.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_color_correction_matrix.png")
             stage_count += 1
-        del ccm  # Clean up ccm object
-        print("CCM Image mean: ", np.mean(img))
 
         # =====================================================================
-        # Gamma
-        gmc = GC(img, self.platform, self.sensor_info, self.parm_gmc)
+        # Gamma Correction
+        gmc = self._get_module(GC, img, self.platform, self.sensor_info, self.parm_gmc)
         img = gmc.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_gamma_correction.png")
             stage_count += 1
-        del gmc  # Clean up gmc object
-        print("Gamma Image mean: ", np.mean(img))
-
-        # =========================
-        # Auto-Exposure
-        aef = AE(img, self.sensor_info, self.parm_ae)
-        self.ae_feedback = aef.execute()
-        del aef  # Clean up aef object
-        print("AE Feedback: ", self.ae_feedback)
 
         # =====================================================================
-        # Color space conversion
-        csc = CSC(img, self.platform, self.sensor_info, self.parm_csc, self.parm_cse)
+        # Auto Exposure
+        ae = self._get_module(AE, img, self.sensor_info, self.parm_ae)
+        self.ae_feedback = ae.execute()
+        if save_intermediate:
+            util.save_image(img, intermediate_dir / f"{stage_count:02d}_auto_exposure.png")
+            stage_count += 1
+
+        # =====================================================================
+        # Color Space Conversion
+        csc = self._get_module(CSC, img, self.platform, self.sensor_info, self.parm_csc, self.parm_cse)
         img = csc.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_color_space_conversion.png")
             stage_count += 1
-        del csc  # Clean up csc object
-        print("CSC Image mean: ", np.mean(img))
 
         # =====================================================================
-        # Local Dynamic Contrast Improvement
-        ldci = LDCI(
-            img,
-            self.platform,
-            self.sensor_info,
-            self.parm_ldci,
-            self.parm_csc["conv_standard"],
-        )
+        # LDCI
+        ldci = self._get_module(LDCI, img, self.platform, self.sensor_info, self.parm_ldci, self.parm_csc["conv_standard"])
         img = ldci.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_ldci.png")
             stage_count += 1
-        del ldci  # Clean up ldci object
 
         # =====================================================================
         # Sharpening
-        sharp = SHARP(
-            img,
-            self.platform,
-            self.sensor_info,
-            self.parm_sha,
-            self.parm_csc["conv_standard"],
-        )
-        img = sharp.execute()
+        sha = self._get_module(SHARP, img, self.platform, self.sensor_info, self.parm_sha, self.parm_csc["conv_standard"])
+        img = sha.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_sharpening.png")
             stage_count += 1
-        del sharp  # Clean up sharp object
 
         # =====================================================================
-        # 2d noise reduction
-        nr2d = NR2D(
-            img,
-            self.sensor_info,
-            self.parm_2dn,
-            self.platform,
-            self.parm_csc["conv_standard"],
-        )
-        img = nr2d.execute()
-        if save_intermediate:
-            util.save_image(img, intermediate_dir / f"{stage_count:02d}_2d_noise_reduction.png")
-            stage_count += 1
-        del nr2d  # Clean up nr2d object
+        # 2D Noise Reduction
+        if self.parm_2dn["is_enable"]:
+            nr2d = self._get_module(NR2D, img, self.platform, self.parm_2dn)
+            img = nr2d.execute()
+            if save_intermediate:
+                util.save_image(img, intermediate_dir / f"{stage_count:02d}_2d_noise_reduction.png")
+                stage_count += 1
 
         # =====================================================================
-        # RGB conversion
-        rgbc = RGBC(
-            img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc
-        )
+        # RGB Conversion
+        rgbc = self._get_module(RGBC, img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc)
         img = rgbc.execute()
         if save_intermediate:
             util.save_image(img, intermediate_dir / f"{stage_count:02d}_rgb_conversion.png")
             stage_count += 1
-        del rgbc  # Clean up rgbc object
 
         # =====================================================================
-        # Scaling
-        scale = Scale(
-            img,
-            self.platform,
-            self.sensor_info,
-            self.parm_sca,
-            self.parm_csc["conv_standard"],
-        )
-        img = scale.execute()
-        if save_intermediate:
-            util.save_image(img, intermediate_dir / f"{stage_count:02d}_scaling.png")
-            stage_count += 1
-        del scale  # Clean up scale object
+        # Scale
+        if self.parm_sca["is_enable"]:
+            sca = self._get_module(Scale, img, self.platform, self.parm_sca)
+            img = sca.execute()
+            if save_intermediate:
+                util.save_image(img, intermediate_dir / f"{stage_count:02d}_scale.png")
+                stage_count += 1
 
         # =====================================================================
-        # YUV saving format 444, 422 etc
-        yuv = YUV_C(img, self.platform, self.sensor_info, self.parm_yuv)
-        img = yuv.execute()
-        if save_intermediate:
-            util.save_image(img, intermediate_dir / f"{stage_count:02d}_yuv_conversion.png")
-            stage_count += 1
-        del yuv  # Clean up yuv object
+        # YUV Conversion Format
+        if self.parm_yuv["is_enable"]:
+            yuv = self._get_module(YUV_C, img, self.platform, self.sensor_info, self.parm_yuv)
+            img = yuv.execute()
+            if save_intermediate:
+                util.save_image(img, intermediate_dir / f"{stage_count:02d}_yuv_conversion.png")
+                stage_count += 1
 
-        # only to view image if csc is off it does nothing
-        out_img = img
-        out_dim = img.shape  # dimensions of Output Image
-
-        # Is not part of ISP-pipeline only assists in visualizing output results
-        if visualize_output:
-            # There can be two out_img formats depending upon which modules are
-            # enabled 1. YUV    2. RGB
-
-            if self.parm_yuv["is_enable"] is True:
-                # YUV_C is enabled and RGB_C is disabled: Output is compressed YUV
-                # To display : Need to decompress it and convert it to RGB.
-                image_height, image_width, _ = out_dim
-                yuv_custom_format = self.parm_yuv["conv_type"]
-
-                yuv_conv = util.get_image_from_yuv_format_conversion(
-                    img, image_height, image_width, yuv_custom_format
-                )
-
-                rgbc = RGBC(img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc)
-                rgbc.yuv_img = yuv_conv
-                out_rgb = rgbc.yuv_to_rgb()
-                del rgbc  # Clean up rgbc object
-
-            elif self.parm_rgb["is_enable"] is False:
-                # RGB_C is disabled: Output is 3D - YUV
-                # To display : Only convert it to RGB
-                rgbc = RGBC(img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc)
-                rgbc.yuv_img = img
-                out_rgb = rgbc.yuv_to_rgb()
-                del rgbc  # Clean up rgbc object
-
-            else:
-                # RGB_C is enabled: Output is RGB
-                # no further processing is needed for display
-                out_rgb = out_img
-
-            # If both RGB_C and YUV_C are enabled. Infinite-ISP will generate
-            # an output but it will be an invalid image.
-
-            util.save_pipeline_output(self.out_file, out_rgb, self.c_yaml)
+        return img
 
     def execute(self, img_path=None, save_intermediate=False):
         """
