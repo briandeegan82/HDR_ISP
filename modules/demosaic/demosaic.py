@@ -7,7 +7,7 @@ Author: 10xEngineers
 import time
 import numpy as np
 from util.utils import save_output_array
-from modules.demosaic.malvar_he_cutler import Malvar as MAL
+from modules.demosaic.malvar_he_cutler_cy import Malvar as MAL
 
 
 class Demosaic:
@@ -50,10 +50,9 @@ class Demosaic:
         """
         Demosaicing the given raw image using given algorithm
         """
-        # 3D masks according to the given bayer
-        masks = self.masks_cfa_bayer()
-        mal = MAL(self.img, masks)
-        demos_out = mal.apply_malvar()
+        # Initialize Malvar demosaicing with Cython optimizations
+        mal = MAL(self.img, self.platform, self.sensor_info, {"is_save": self.is_save})
+        demos_out = mal.execute()
 
         # Clipping the pixels values within the bit range
         demos_out = np.clip(demos_out, 0, 2**self.bit_depth - 1)
