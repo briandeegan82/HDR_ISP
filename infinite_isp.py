@@ -436,7 +436,7 @@ class InfiniteISP:
             util.save_image(final_img, output_path)
             print(f"Final output saved to: {output_path}")
 
-        util.display_ae_statistics(self.ae_feedback, self.awb_gains)
+        #util.display_ae_statistics(self.ae_feedback, self.awb_gains)
 
         # Print Logs to mark end of pipeline Execution
         print(50 * "-" + "\n")

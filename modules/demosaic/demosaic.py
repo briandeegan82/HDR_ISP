@@ -77,10 +77,10 @@ class Demosaic:
         """
         Applying demosaicing to bayer image
         """
-        print("CFA interpolation (default) = True")
+        #print("CFA interpolation (default) = True")
         start = time.time()
         cfa_out = self.apply_cfa()
-        print(f"  Execution time: {time.time() - start:.3f}s")
+        #print(f"  Execution time: {time.time() - start:.3f}s")
         self.img = cfa_out
         self.save()
         return self.img

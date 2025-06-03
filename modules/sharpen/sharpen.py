@@ -51,12 +51,12 @@ class Sharpening:
         """
         Applying sharpening to input image
         """
-        print("Sharpening = " + str(self.enable))
+        #print("Sharpening = " + str(self.enable))
 
         if self.enable is True:
             start = time.time()
             s_out = self.apply_unsharp_masking()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = s_out
 
         self.save()

@@ -46,17 +46,18 @@ pip install -r requirements.txt
 
 ### Compiling Cython Modules
 
-The project uses Cython for optimized implementation of the Contrast Limited Adaptive Histogram Equalization (CLAHE) algorithm. To compile the Cython module:
+The project uses Cython for optimized implementation of the Contrast Limited Adaptive Histogram Equalization (CLAHE) algorithm, demosaic, and color space conversion. To compile the Cython module:
 
-1. Navigate to the CLAHE module directory:
+1. Navigate to the relevant directories and compile:
 ```bash
 cd modules/ldci
-```
-
-2. Compile the Cython module:
-```bash
+python setup.py build_ext --inplace
+cd modules/color_space_conversion
+python setup.py build_ext --inplace
+cd modules/demosaic
 python setup.py build_ext --inplace
 ```
+
 
 This will create the compiled Cython module that will be used by the ISP pipeline. Make sure you have a C compiler installed on your system:
 - Windows: Microsoft Visual C++ Build Tools

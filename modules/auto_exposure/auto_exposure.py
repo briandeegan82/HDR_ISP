@@ -51,7 +51,7 @@ class AutoExposure:
         # For Luminance Histograms, Image is first converted into greyscale image
         # Function also returns average luminance of image which is used as AE-Stat
         grey_img, avg_lum = self.get_greyscale_image(self.img)
-        print("Average luminance is = ", avg_lum)
+        #print("Average luminance is = ", avg_lum)
 
         # Histogram skewness Calculation for AE Stats
         skewness = self.get_luminance_histogram_skewness(grey_img)
@@ -111,12 +111,12 @@ class AutoExposure:
         """
         Execute Auto Exposure
         """
-        print("Auto Exposure= " + str(self.enable))
+        #print("Auto Exposure= " + str(self.enable))
 
         if self.enable is False:
             return None
         else:
             start = time.time()
             ae_feedback = self.get_exposure_feedback()
-            print(f"  Execution time: {time.time()-start:.3f}s")
+            #print(f"  Execution time: {time.time()-start:.3f}s")
             return ae_feedback

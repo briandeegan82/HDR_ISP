@@ -80,9 +80,9 @@ def main():
     ldr_image = durand_tone_mapping(hdr_image, sigma_space=10, sigma_color=0.4, contrast_factor=5)
 
     # Save the tone-mapped LDR image
-    save_ldr_image(ldr_image, ldr_file_path)
+    #save_ldr_image(ldr_image, ldr_file_path)
 
-    print(f"Tone-mapped image saved to {ldr_file_path}")
+    #print(f"Tone-mapped image saved to {ldr_file_path}")
 
 
 if __name__ == "__main__":

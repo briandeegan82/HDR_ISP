@@ -60,14 +60,14 @@ class LDCI:
         """
         Executing LDCI module according to user choice
         """
-        print("\nLDCI Module:")
-        print(f"  Enabled: {self.enable}")
+        #print("\nLDCI Module:")
+        #print(f"  Enabled: {self.enable}")
 
         if self.enable is True:
             total_start = time.time()
             s_out = self.apply_ldci()
             total_time = time.time() - total_start
-            print(f"  Total processing time: {total_time:.3f}s")
+            #print(f"  Total processing time: {total_time:.3f}s")
             self.img = s_out
 
         self.save()

@@ -150,12 +150,12 @@ class BlackLevelCorrection:
         """
         Black Level Correction
         """
-        print("Black Level Correction = " + str(self.enable))
+        #print("Black Level Correction = " + str(self.enable))
 
         if self.enable:
             start = time.time()
             blc_out = self.apply_blc_parameters()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = blc_out
         self.save()
         return self.img

@@ -83,21 +83,21 @@ class YUVConvFormat:
 
     def execute(self):
         """Execute YUV conversion if enabled."""
-        print(
-            "YUV conversion format "
-            + self.param_yuv["conv_type"]
-            + " = "
-            + str(self.enable)
-        )
+        #print(
+        #    "YUV conversion format "
+        #    + self.param_yuv["conv_type"]
+        #    + " = "
+        #    + str(self.enable)
+        #)
 
         if self.enable:
             if self.platform["rgb_output"]:
-                print("Invalid input for YUV conversion: RGB image format.")
+                #print("Invalid input for YUV conversion: RGB image format.")
                 self.param_yuv["is_enable"] = False
             else:
                 start = time.time()
                 yuv = self.convert2yuv_format()
-                print(f"  Execution time: {time.time() - start:.3f}s")
+                #print(f"  Execution time: {time.time() - start:.3f}s")
                 self.img = yuv
 
         self.save()

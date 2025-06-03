@@ -77,12 +77,12 @@ class Crop:
     def apply_cropping(self):
         """Crop Image"""
         if self.old_size == self.new_size:
-            print("   - Output size is the same as input size.")
+            #print("   - Output size is the same as input size.")
             return self.img
 
         if self.old_size[0] < self.new_size[0] or self.old_size[1] < self.new_size[1]:
-            print(f"   - Invalid output size {self.new_size[0]}x{self.new_size[1]}")
-            print("   - Make sure output size is smaller than input size!")
+            #print(f"   - Invalid output size {self.new_size[0]}x{self.new_size[1]}")
+            #print("   - Make sure output size is smaller than input size!")
             return self.img
 
         crop_rows = self.old_size[0] - self.new_size[0]
@@ -121,7 +121,7 @@ class Crop:
 
     def execute(self):
         """Execute cropping if enabled."""
-        print("Crop = " + str(self.enable))
+        #print("Crop = " + str(self.enable))
 
         # Save the input of crop module
         self.save("Inpipeline_crop_")
@@ -130,7 +130,7 @@ class Crop:
         if self.enable:
             start = time.time()
             cropped_img = self.apply_cropping()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = cropped_img
 
         # save the output of crop module

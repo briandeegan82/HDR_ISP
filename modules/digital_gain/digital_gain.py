@@ -86,12 +86,12 @@ class DigitalGain:
         """
         Execute Digital Gain Module
         """
-        print("Digital Gain (default) = True ")
+        #print("Digital Gain (default) = True ")
 
         # ae_correction indicated if the gain is default digital gain or AE-correction gain.
         start = time.time()
         dg_out = self.apply_digital_gain()
-        print(f"  Execution time: {time.time() - start:.3f}s")
+        #print(f"  Execution time: {time.time() - start:.3f}s")
         self.img = dg_out
         self.save()
         return self.img, self.current_gain

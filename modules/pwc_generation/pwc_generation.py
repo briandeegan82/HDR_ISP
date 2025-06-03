@@ -170,7 +170,7 @@ class PiecewiseCurve:
         """
         PWC decompanding
         """
-        print("Decompanding = " + str(self.enable))
+        #print("Decompanding = " + str(self.enable))
 
         if self.enable:
             start = time.time()
@@ -183,6 +183,6 @@ class PiecewiseCurve:
             
             self.img = lut[self.img]
             self.img = np.clip(self.img - self.parm_cmpd["pedestal"],0, None)
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
         self.save()
         return self.img.astype(np.uint32)

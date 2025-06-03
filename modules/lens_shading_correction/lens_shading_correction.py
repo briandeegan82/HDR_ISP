@@ -23,7 +23,7 @@ class LensShadingCorrection:
         """
         Execute Lens Shading Correction
         """
-        print("Lens Shading Correction = " + str(self.enable))
+        #print("Lens Shading Correction = " + str(self.enable))
 
         if self.enable:
             return self.img

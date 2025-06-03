@@ -101,11 +101,11 @@ class RGBConversion:
         """
         Execute RGB Conversion
         """
-        print("RGB Conversion" + " = " + str(self.enable))
+        #print("RGB Conversion" + " = " + str(self.enable))
         if self.enable:
             start = time.time()
             rgb_out = self.yuv_to_rgb()
-            print(f"  Total execution time: {time.time() - start:.3f}s")
+            #print(f"  Total execution time: {time.time() - start:.3f}s")
             self.img = rgb_out
         self.save()
         return self.img

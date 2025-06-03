@@ -68,12 +68,12 @@ class ColorCorrectionMatrix:
 
     def execute(self):
         """Execute ccm if enabled."""
-        print("Color Correction Matrix = " + str(self.enable))
+        #print("Color Correction Matrix = " + str(self.enable))
 
         if self.enable:
             start = time.time()
             ccm_out = self.apply_ccm()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = ccm_out
 
         self.save()

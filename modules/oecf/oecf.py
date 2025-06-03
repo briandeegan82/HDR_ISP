@@ -83,12 +83,12 @@ class OECF:
 
     def execute(self):
         """Execute OECF if enabled."""
-        print("Optical Electronic Conversion Function = " + str(self.enable))
+        #print("Optical Electronic Conversion Function = " + str(self.enable))
 
         if self.enable:
             start = time.time()
             oecf_out = self.apply_oecf()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = oecf_out
         self.save()
         return self.img

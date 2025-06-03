@@ -86,10 +86,10 @@ class HDRDurandToneMapping:
     
     def execute(self):
         if self.is_enable is True:
-            print("Executing HDR Durand Tone Mapping...")
+            #print("Executing HDR Durand Tone Mapping...")
             start = time.time()
             self.img = self.apply_tone_mapping()
-            print(f"Execution time: {time.time() - start:.3f}s")
+            #print(f"Execution time: {time.time() - start:.3f}s")
             
         self.save()
         return self.img

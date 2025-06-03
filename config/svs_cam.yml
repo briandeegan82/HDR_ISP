@@ -34,7 +34,7 @@ companding:
   is_save: false
 
 crop:
-  is_enable: true
+  is_enable: false
   is_debug: false
   crop_x_start: 1
   crop_y_start: 1
@@ -45,7 +45,7 @@ crop:
 dead_pixel_correction: 
   is_enable: false
   dp_threshold: 80
-  is_debug: true
+  is_debug: false
   is_save: false
 
 black_level_correction:
@@ -69,7 +69,7 @@ oecf:
   is_save: false
 
 digital_gain:
-  is_debug: true
+  is_debug: false
   is_auto: false
   is_enable: true
   # Array of pre-define Gains
@@ -95,8 +95,8 @@ bayer_noise_reduction:
   is_save: false
 
 auto_white_balance:
-  is_enable: true
-  is_debug: true
+  is_enable: false
+  is_debug: false
   underexposed_percentage: 0.01
   overexposed_percentage: 0.01
   algorithm: "pca"
@@ -106,7 +106,7 @@ auto_white_balance:
 white_balance:
   is_enable: true
   # is_auto refers to auto white balance module
-  is_debug: true
+  is_debug: false
   is_auto: true
   r_gain: 1.4 #1.24609375
   b_gain: 1.4 #2.80859375
@@ -129,7 +129,7 @@ gamma_correction:
 
 auto_exposure:
   is_enable: false
-  is_debug: true
+  is_debug: false
   center_illuminance: 90
   histogram_skewness: 0.9
 
@@ -137,7 +137,7 @@ auto_exposure:
 hdr_durand:
   is_enable: true
   is_save: True
-  is_debug: True
+  is_debug: false
   sigma_space: 20
   sigma_color: 0.4
   contrast_factor: 1.5
@@ -181,7 +181,7 @@ rgb_conversion:
 
 scale:
   is_enable: false
-  is_debug: true
+  is_debug: false
   new_width: 1920
   new_height: 1080   
   is_hardware: true

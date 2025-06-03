@@ -113,9 +113,9 @@ class BayerNoiseReduction:
         in_img = np.float32(self.img)
         if in_img.max() > 1.0:
             in_img = in_img / (2**bit_depth - 1)
-            print("Input image normalized to [0, 1] range.")
-        else:
-            print("Input image already in [0, 1] range. No normalization applied.")
+            #print("Input image normalized to [0, 1] range.")
+        #else:
+            #print("Input image already in [0, 1] range. No normalization applied.")
         
         # Extract channels using Numba-accelerated function
         start = time.time()
@@ -189,12 +189,12 @@ class BayerNoiseReduction:
         """
         Appling BNR to input RAW image and returns the output image
         """
-        print("Bayer Noise Reduction = " + str(self.enable))
+        #print("Bayer Noise Reduction = " + str(self.enable))
 
         if self.enable is True:
             start = time.time()
             bnr_out = self.apply_bnr()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = bnr_out
 
         self.save()

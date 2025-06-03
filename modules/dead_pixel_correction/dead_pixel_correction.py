@@ -58,13 +58,13 @@ class DeadPixelCorrection:
     def execute(self):
         """Execute DPC Module"""
 
-        print("Dead Pixel Correction = " + str(self.enable))
+        #print("Dead Pixel Correction = " + str(self.enable))
 
         if self.enable:
             start = time.time()
             self.img = np.float32(self.img)
             dpc_out = self.apply_dynamic_dpc()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = dpc_out
 
         self.save()

@@ -83,10 +83,10 @@ class WhiteBalance:
         """
 
         if self.enable is True:
-            print("White balancing = " + "True")
+            #print("White balancing = " + "True")
             start = time.time()
             wb_out = self.apply_wb_parameters()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = wb_out
 
         self.save()

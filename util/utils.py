@@ -309,7 +309,7 @@ def save_output_array(
 
         # save Image as .png
         plt.imsave(f"{filename}.png", output_array)
-        print(f"Saved output to: {filename}.png")
+        #print(f"Saved output to: {filename}.png")
 
 
 def save_output_array_yuv(img_name, output_array, module_name, platform, conv_std):

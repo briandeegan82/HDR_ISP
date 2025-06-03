@@ -40,8 +40,8 @@ class AutoWhiteBalance:
         Determine white balance gains calculated using AWB Algorithms to Raw Image
         """
         total_start = time.time()
-        print("\nAuto White Balance Profiling:")
-        print("--------------------------------")
+        #print("\nAuto White Balance Profiling:")
+        #print("--------------------------------")
 
         max_pixel_value = 2**self.bit_depth
         approx_percentage = max_pixel_value / 100
@@ -83,7 +83,7 @@ class AutoWhiteBalance:
 
         g_channel = (gr_channel + gb_channel) / 2
         bayer_channels = np.dstack((r_channel, g_channel, b_channel))
-        print(f"  Channel separation time: {time.time() - start:.3f}s")
+        #print(f"  Channel separation time: {time.time() - start:.3f}s")
 
         start = time.time()
         bad_pixels = np.sum(
@@ -96,7 +96,7 @@ class AutoWhiteBalance:
             axis=2,
         )
         self.flatten_img = bayer_channels[bad_pixels == 0]
-        print(f"  Bad pixel removal time: {time.time() - start:.3f}s")
+        #print(f"  Bad pixel removal time: {time.time() - start:.3f}s")
 
         start = time.time()
         if self.algorithm == "norm_2":
@@ -105,7 +105,7 @@ class AutoWhiteBalance:
             rgain, bgain = self.apply_pca_illuminant_estimation()
         else:
             rgain, bgain = self.apply_gray_world()
-        print(f"  {self.algorithm} algorithm execution time: {time.time() - start:.3f}s")
+        #print(f"  {self.algorithm} algorithm execution time: {time.time() - start:.3f}s")
 
         # Check if r_gain and b_gain go out of bound
         rgain = 1 if rgain <= 1 else rgain
@@ -116,8 +116,8 @@ class AutoWhiteBalance:
             print("   - AWB - RGain = ", rgain)
             print("   - AWB - Bgain = ", bgain)
 
-        print(f"  Total AWB execution time: {time.time() - total_start:.3f}s")
-        print("--------------------------------\n")
+        #print(f"  Total AWB execution time: {time.time() - total_start:.3f}s")
+        #print("--------------------------------\n")
         return rgain, bgain
 
     def apply_gray_world(self):
@@ -159,13 +159,13 @@ class AutoWhiteBalance:
         """
         Execute Auto White Balance Module
         """
-        print("Auto White balancing = " + str(self.enable))
+        #print("Auto White balancing = " + str(self.enable))
 
         # This module is enabled only when white balance 'enable' and 'auto' parameter both
         # are true.
         if self.enable is True:
             start = time.time()
             rgain, bgain = self.determine_white_balance_gain()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             return np.array([rgain, bgain])
         return None

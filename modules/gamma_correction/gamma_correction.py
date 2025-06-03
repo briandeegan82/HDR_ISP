@@ -63,11 +63,11 @@ class GammaCorrection:
         """
         Exceute Gamma Correction
         """
-        print("Gamma Correction = " + str(self.enable))
+        #print("Gamma Correction = " + str(self.enable))
         if self.enable is True:
             start = time.time()
             gc_out = self.apply_gamma()
-            print(f"  Execution time: {time.time() - start:.3f}s")
+            #print(f"  Execution time: {time.time() - start:.3f}s")
             self.img = gc_out
 
         self.save()
