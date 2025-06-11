@@ -10,3 +10,4 @@ cython
 imagecodecs
 opencv-contrib-python
 opencv-python
+numba
