@@ -59,6 +59,13 @@ try:
 except Exception:
     pass
 
+# Dummy profile decorator for normal runs (no-op if not using kernprof)
+try:
+    profile
+except NameError:
+    def profile(func):
+        return func
+
 class InfiniteISP:
     """
     Infinite-ISP Pipeline
@@ -205,6 +212,7 @@ class InfiniteISP:
                 with rawpy.imread(raw_path) as raw:
                     self.raw = raw.raw_image.copy()  # Use copy to ensure data is loaded into memory
 
+    @profile
     def run_pipeline(self, visualize_output=True, save_intermediate=False):
         """
         Simulation of ISP-Pipeline
@@ -219,82 +227,104 @@ class InfiniteISP:
             intermediate_dir.mkdir(parents=True, exist_ok=True)
             stage_count = 0
 
+        timings = []
+
         # =====================================================================
         # Cropping
+        t0 = time.time()
         crop = self._get_module(Crop, self.raw, self.platform, self.sensor_info, self.parm_cro)
         img = crop.execute()
+        timings.append(("Crop", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_crop.png"))
             stage_count += 1
 
         # =====================================================================
         #  Dead pixels correction
+        t0 = time.time()
         dpc = self._get_module(DPC, img, self.sensor_info, self.parm_dpc, self.platform)
         img = dpc.execute()
+        timings.append(("Dead Pixel Correction", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_dead_pixel_correction.png"))
             stage_count += 1
 
         # =====================================================================
         # Black level correction
+        t0 = time.time()
         blc = self._get_module(BLC, img, self.platform, self.sensor_info, self.parm_blc)
         img = blc.execute()
+        timings.append(("Black Level Correction", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_black_level_correction.png"))
             stage_count += 1
 
         # =====================================================================
         # decompanding
+        t0 = time.time()
         cmpd = self._get_module(PWC, img, self.platform, self.sensor_info, self.parm_cmpd)
         img = cmpd.execute()
+        timings.append(("Decompanding", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_decompanding.png"))
             stage_count += 1
 
         # =====================================================================
         # OECF
+        t0 = time.time()
         oecf = self._get_module(OECF, img, self.platform, self.sensor_info, self.parm_oec)
         img = oecf.execute()
+        timings.append(("OECF", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_oecf.png"))
             stage_count += 1
 
         # =====================================================================
         # Digital Gain
+        t0 = time.time()
         dga = self._get_module(DG, img, self.platform, self.sensor_info, self.parm_dga)
         img, self.dga_current_gain = dga.execute()
+        timings.append(("Digital Gain", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_digital_gain.png"))
             stage_count += 1
 
         # =====================================================================
         # Lens shading correction
+        t0 = time.time()
         lsc = self._get_module(LSC, img, self.platform, self.sensor_info, self.parm_lsc)
         img = lsc.execute()
+        timings.append(("Lens Shading Correction", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_lens_shading_correction.png"))
             stage_count += 1
 
         # =====================================================================
         # Bayer noise reduction
+        t0 = time.time()
         bnr = self._get_module(BNR, img, self.sensor_info, self.parm_bnr, self.platform)
         img = bnr.execute()
+        timings.append(("Bayer Noise Reduction", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_bayer_noise_reduction.png"))
             stage_count += 1
 
         # =====================================================================
         # Auto White Balance
+        t0 = time.time()
         awb = self._get_module(AWB, img, self.sensor_info, self.parm_awb)
         self.awb_gains = awb.execute()
+        timings.append(("Auto White Balance", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_auto_white_balance.png"))
             stage_count += 1
 
         # =====================================================================
         # White Balance
+        t0 = time.time()
         wb = self._get_module(WB, img, self.platform, self.sensor_info, self.parm_wbc)
         img = wb.execute()
+        timings.append(("White Balance", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_white_balance.png"))
             stage_count += 1
@@ -302,64 +332,93 @@ class InfiniteISP:
         # =====================================================================
         # HDR Durand Tone Mapping
         if self.param_durand["is_enable"]:
+            print("[Pipeline] HDR Durand start")
+            t0 = time.time()
             hdr = self._get_module(HDR, img, self.platform, self.sensor_info, self.param_durand)
             img = hdr.execute()
+            # Explicit GPU sync if using CuPy
+            try:
+                import cupy as cp
+                cp.cuda.Stream.null.synchronize()
+                print("[Pipeline] CuPy GPU sync after HDR Durand")
+            except ImportError:
+                pass
+            print(f"[Pipeline] HDR Durand end: {time.time() - t0:.4f}s")
+            timings.append(("HDR Durand", time.time() - t0))
+            print("[Pipeline] After HDR Durand, before CCM")
+            t_durand_ccm = time.time()
             if save_intermediate:
                 util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_hdr_durand.png"))
                 stage_count += 1
 
         # =====================================================================
         # CFA interpolation
+        t0 = time.time()
         dem = self._get_module(Demosaic, img, self.platform, self.sensor_info, self.parm_dem)
         img = dem.execute()
+        timings.append(("Demosaic", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_demosaic.png"))
             stage_count += 1
 
         # =====================================================================
         # Color Correction Matrix
+        print("[Pipeline] CCM start")
+        t_ccm = time.time()
         ccm = self._get_module(CCM, img, self.platform, self.sensor_info, self.parm_ccm)
         img = ccm.execute()
+        print(f"[Pipeline] CCM end: {time.time() - t_ccm:.4f}s (elapsed since Durand: {time.time() - t_durand_ccm:.4f}s)")
+        timings.append(("Color Correction Matrix", time.time() - t_ccm))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_color_correction_matrix.png"))
             stage_count += 1
 
         # =====================================================================
         # Gamma Correction
+        t0 = time.time()
         gmc = self._get_module(GC, img, self.platform, self.sensor_info, self.parm_gmc)
         img = gmc.execute()
+        timings.append(("Gamma Correction", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_gamma_correction.png"))
             stage_count += 1
 
         # =====================================================================
         # Auto Exposure
+        t0 = time.time()
         ae = self._get_module(AE, img, self.sensor_info, self.parm_ae)
         self.ae_feedback = ae.execute()
+        timings.append(("Auto Exposure", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_auto_exposure.png"))
             stage_count += 1
 
         # =====================================================================
         # Color Space Conversion
+        t0 = time.time()
         csc = self._get_module(CSC, img, self.platform, self.sensor_info, self.parm_csc, self.parm_cse)
         img = csc.execute()
+        timings.append(("Color Space Conversion", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_color_space_conversion.png"))
             stage_count += 1
 
         # =====================================================================
         # LDCI
+        t0 = time.time()
         ldci = self._get_module(LDCI, img, self.platform, self.sensor_info, self.parm_ldci, self.parm_csc["conv_standard"])
         img = ldci.execute()
+        timings.append(("LDCI", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_ldci.png"))
             stage_count += 1
 
         # =====================================================================
         # Sharpening
+        t0 = time.time()
         sha = self._get_module(SHARP, img, self.platform, self.sensor_info, self.parm_sha, self.parm_csc["conv_standard"])
         img = sha.execute()
+        timings.append(("Sharpening", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_sharpening.png"))
             stage_count += 1
@@ -367,16 +426,20 @@ class InfiniteISP:
         # =====================================================================
         # 2D Noise Reduction
         if self.parm_2dn["is_enable"]:
+            t0 = time.time()
             nr2d = self._get_module(NR2D, img, self.platform, self.parm_2dn)
             img = nr2d.execute()
+            timings.append(("2D Noise Reduction", time.time() - t0))
             if save_intermediate:
                 util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_2d_noise_reduction.png"))
                 stage_count += 1
 
         # =====================================================================
         # RGB Conversion
+        t0 = time.time()
         rgbc = self._get_module(RGBC, img, self.platform, self.sensor_info, self.parm_rgb, self.parm_csc)
         img = rgbc.execute()
+        timings.append(("RGB Conversion", time.time() - t0))
         if save_intermediate:
             util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_rgb_conversion.png"))
             stage_count += 1
@@ -384,8 +447,10 @@ class InfiniteISP:
         # =====================================================================
         # Scale
         if self.parm_sca["is_enable"]:
+            t0 = time.time()
             sca = self._get_module(Scale, img, self.platform, self.parm_sca)
             img = sca.execute()
+            timings.append(("Scale", time.time() - t0))
             if save_intermediate:
                 util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_scale.png"))
                 stage_count += 1
@@ -393,12 +458,19 @@ class InfiniteISP:
         # =====================================================================
         # YUV Conversion Format
         if self.parm_yuv["is_enable"]:
+            t0 = time.time()
             yuv = self._get_module(YUV_C, img, self.platform, self.sensor_info, self.parm_yuv)
             img = yuv.execute()
+            timings.append(("YUV Conversion Format", time.time() - t0))
             if save_intermediate:
                 util.save_image(img, os.path.join(intermediate_dir, f"{stage_count:02d}_yuv_conversion.png"))
                 stage_count += 1
 
+        # Print timings for all stages
+        print("\n--- Pipeline Stage Timings ---")
+        for name, t in timings:
+            print(f"{name:28}: {t:.4f} s")
+        print("-----------------------------\n")
         return img
 
     def execute(self, img_path=None, save_intermediate=False):

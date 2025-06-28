@@ -136,7 +136,7 @@ auto_exposure:
 # Example usage in ISP pipeline
 hdr_durand:
   is_enable: true
-  is_save: True
+  is_save: False
   is_debug: True
   sigma_space: 20
   sigma_color: 0.4

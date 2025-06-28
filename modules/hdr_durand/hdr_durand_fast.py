@@ -4,6 +4,13 @@ from util.utils import save_output_array
 from util.gpu_utils import gpu_accelerator
 import time
 
+# Dummy profile decorator for normal runs (no-op if not using kernprof)
+try:
+    profile
+except NameError:
+    def profile(func):
+        return func
+
 class HDRDurandToneMapping:
     """
     HDR Durand Tone Mapping Algorithm Implementation
@@ -46,34 +53,39 @@ class HDRDurandToneMapping:
             image.astype(np.float32), d, sigma_color_opencv, sigma_space
         )
     
+    @profile
     def apply_tone_mapping(self):
-        """ Durand's tone mapping implementation. """
-            # Convert to log domain
+        """ Durand's tone mapping implementation with detailed timing. """
+        import time
+        t0 = time.time()
         epsilon = 1e-6  # Small value to avoid log(0)
         log_luminance = np.log10(self.img + epsilon)
-    
-        # Apply bilateral filter to get the base layer
-        # For efficiency, we're using OpenCV's bilateral filter
+        print(f"[Durand] Log conversion: {time.time() - t0:.4f}s")
+
+        t1 = time.time()
         log_base = self.bilateral_filter(log_luminance.astype(np.float32), 
                                    self.sigma_color, 
                                    self.sigma_space)
-    
-        # Extract the detail layer
+        # Explicit GPU sync if using CuPy
+        try:
+            import cupy as cp
+            cp.cuda.Stream.null.synchronize()
+            print("[Durand] CuPy GPU sync after bilateral filter")
+        except ImportError:
+            pass
+        print(f"[Durand] Bilateral filter: {time.time() - t1:.4f}s")
+
+        t2 = time.time()
         log_detail = log_luminance - log_base
-    
-        # Compress the base layer (reduce contrast)
         compressed_log_base = log_base / self.contrast_factor
-    
-        # Recombine base and detail layers
         log_output = compressed_log_base + log_detail
-    
-        # Convert back from log domain
+        print(f"[Durand] Detail/recombine: {time.time() - t2:.4f}s")
+
+        t3 = time.time()
         output_luminance = np.power(10, log_output)
-    
-        # Normalize to [0, 1] range
         output_luminance = (output_luminance - np.min(output_luminance)) / (np.max(output_luminance) - np.min(output_luminance))
-    
-        
+        print(f"[Durand] Normalize/scale: {time.time() - t3:.4f}s")
+
         if self.output_bit_depth == 8:
             return (output_luminance * 255).astype(np.uint8)
         elif self.output_bit_depth == 16:
@@ -88,13 +100,13 @@ class HDRDurandToneMapping:
             save_output_array(self.platform["in_file"], self.img, "Out_hdr_durand_", 
                               self.platform, self.sensor_info["bit_depth"], self.sensor_info["bayer_pattern"])
     
+    @profile
     def execute(self):
         if self.is_enable is True:
-            #print("Executing HDR Durand Tone Mapping...")
             start = time.time()
+            print("[Durand] Execute start")
             self.img = self.apply_tone_mapping()
-            #print(f"Execution time: {time.time() - start:.3f}s")
-            
+            print(f"[Durand] Execute end: {time.time() - start:.4f}s")
         self.save()
         return self.img
         
