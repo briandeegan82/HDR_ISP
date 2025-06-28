@@ -23,13 +23,13 @@ from util.utils import OUTPUT_DIR, OUTPUT_ARRAY_DIR
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-DATASET_PATH = "./in_frames/hdr_mode/svs"
+DATASET_PATH = "/home/brian/ISP_ws/bin2raw/output"
 CONFIG_PATH = "./config/svs_cam.yml"
-OUTPUT_PATH = "./out_frames/hdr_mode/svs"  # Added output path
+OUTPUT_PATH = "/home/brian/ISP_ws/bin2raw/FV_RGB"  # Added output path
 VIDEO_MODE = False
 EXTRACT_SENSOR_INFO = True
 UPDATE_BLC_WB = True
-MAX_WORKERS = 4  # Adjust based on your system's capabilities
+MAX_WORKERS = 8  # Adjust based on your system's capabilities
 
 # Override the hardcoded output paths in util.utils
 OUTPUT_DIR = OUTPUT_PATH

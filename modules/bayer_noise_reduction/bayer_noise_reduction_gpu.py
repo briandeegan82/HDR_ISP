@@ -1,18 +1,14 @@
 """
-File: bayer_noise_reduction.py
-Description: Noise reduction in bayer domain
+File: bayer_noise_reduction_gpu.py
+Description: GPU-accelerated noise reduction in bayer domain
 Author: 10xEngineers
 ------------------------------------------------------------
 """
 
 import time
 import numpy as np
-from numba import jit, prange
-from modules.bayer_noise_reduction.joint_bf import JointBF as JBF, interpolate_green_channel_numba, gauss_kern_raw_numpy, fast_joint_bilateral_filter_opencv
-from util.utils import save_output_array
 from util.gpu_utils import gpu_accelerator
-from scipy.ndimage import grey_dilation, gaussian_filter
-import cv2
+from util.utils import save_output_array
 
 def extract_channels_numpy(img, bayer_pattern, height, width):
     """Pure NumPy channel extraction (no Numba)"""
@@ -55,9 +51,9 @@ def combine_channels_numpy(out_img_r, out_img_g, out_img_b, bayer_pattern, heigh
         raise ValueError(f"Unknown bayer pattern: {bayer_pattern}")
     return bnr_out_img
 
-class BayerNoiseReduction:
+class BayerNoiseReductionGPU:
     """
-    Noise Reduction in Bayer domain
+    GPU-accelerated Noise Reduction in Bayer domain
     """
 
     def __init__(self, img, sensor_info, parm_bnr, platform):
@@ -72,53 +68,19 @@ class BayerNoiseReduction:
 
     def apply_bnr(self):
         """
-        Apply bnr to the input image and return the output image
+        Apply GPU-accelerated bnr to the input image and return the output image
         """
         # Extract parameters
         bayer_pattern = self.sensor_info["bayer_pattern"]
         width, height = self.sensor_info["width"], self.sensor_info["height"]
         bit_depth = self.sensor_info["hdr_bit_depth"]
         
-        # Print raw R, G, B pixel stats before normalization
-        raw_img = np.float32(self.img)
-        g_mask = np.zeros_like(raw_img)
-        r_mask = np.zeros_like(raw_img)
-        b_mask = np.zeros_like(raw_img)
-        if bayer_pattern == "rggb":
-            r_mask[0:height:2, 0:width:2] = 1
-            g_mask[0:height:2, 1:width:2] = 1
-            g_mask[1:height:2, 0:width:2] = 1
-            b_mask[1:height:2, 1:width:2] = 1
-        elif bayer_pattern == "bggr":
-            b_mask[0:height:2, 0:width:2] = 1
-            g_mask[0:height:2, 1:width:2] = 1
-            g_mask[1:height:2, 0:width:2] = 1
-            r_mask[1:height:2, 1:width:2] = 1
-        elif bayer_pattern == "grbg":
-            g_mask[0:height:2, 0:width:2] = 1
-            r_mask[0:height:2, 1:width:2] = 1
-            b_mask[1:height:2, 0:width:2] = 1
-            g_mask[1:height:2, 1:width:2] = 1
-        elif bayer_pattern == "gbrg":
-            g_mask[0:height:2, 0:width:2] = 1
-            b_mask[0:height:2, 1:width:2] = 1
-            r_mask[1:height:2, 0:width:2] = 1
-            g_mask[1:height:2, 1:width:2] = 1
-        else:
-            raise ValueError(f"Unknown bayer pattern: {bayer_pattern}")
-        #print(f"Raw R pixels: mean={raw_img[r_mask==1].mean():.4f}, min={raw_img[r_mask==1].min():.4f}, max={raw_img[r_mask==1].max():.4f}")
-        #print(f"Raw G pixels: mean={raw_img[g_mask==1].mean():.4f}, min={raw_img[g_mask==1].min():.4f}, max={raw_img[g_mask==1].max():.4f}")
-        #print(f"Raw B pixels: mean={raw_img[b_mask==1].mean():.4f}, min={raw_img[b_mask==1].min():.4f}, max={raw_img[b_mask==1].max():.4f}")
-        
         # Convert to float32 and normalize only if needed
         in_img = np.float32(self.img)
         if in_img.max() > 1.0:
             in_img = in_img / (2**bit_depth - 1)
-            #print("Input image normalized to [0, 1] range.")
-        #else:
-            #print("Input image already in [0, 1] range. No normalization applied.")
         
-        # Extract channels using Numba-accelerated function
+        # Extract channels using NumPy function
         start = time.time()
         in_img_r, in_img_b = extract_channels_numpy(in_img, bayer_pattern, height, width)
         
@@ -131,8 +93,8 @@ class BayerNoiseReduction:
             [0, 0, -1, 0, 0]
         ], dtype=np.float32) / 8.0
         
-        # Interpolate green channel using the kernel
-        interp_g = cv2.filter2D(in_img, -1, interp_kern_g)
+        # Interpolate green channel using GPU-accelerated filtering
+        interp_g = gpu_accelerator.filter2d_gpu(in_img.astype(np.float32), interp_kern_g)
         interp_g = np.clip(interp_g, 0, 1)
         
         # Extract guide image at R and B positions to match source image sizes
@@ -154,7 +116,7 @@ class BayerNoiseReduction:
         filt_size_r = int((self.parm_bnr["filter_window"] + 1) / 2)
         filt_size_b = int((self.parm_bnr["filter_window"] + 1) / 2)
         
-        # Apply joint bilateral filter with GPU acceleration
+        # Apply GPU-accelerated joint bilateral filter
         out_img_r = gpu_accelerator.bilateral_filter_gpu(
             in_img_r, filt_size_r, self.parm_bnr["r_std_dev_r"], self.parm_bnr["r_std_dev_s"]
         )
@@ -180,7 +142,7 @@ class BayerNoiseReduction:
             save_output_array(
                 self.platform["in_file"],
                 self.img,
-                "Out_bayer_noise_reduction_",
+                "Out_bayer_noise_reduction_gpu_",
                 self.platform,
                 self.sensor_info["bit_depth"],
                 self.sensor_info["bayer_pattern"],
@@ -188,15 +150,13 @@ class BayerNoiseReduction:
 
     def execute(self):
         """
-        Appling BNR to input RAW image and returns the output image
+        Applying GPU-accelerated BNR to input RAW image and returns the output image
         """
-        #print("Bayer Noise Reduction = " + str(self.enable))
-
         if self.enable is True:
             start = time.time()
             bnr_out = self.apply_bnr()
-            #print(f"  Execution time: {time.time() - start:.3f}s")
+            print(f"GPU BNR execution time: {time.time() - start:.3f}s")
             self.img = bnr_out
 
         self.save()
-        return self.img
+        return self.img 

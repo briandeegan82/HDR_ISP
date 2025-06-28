@@ -1,5 +1,5 @@
 matplotlib
-numpy==1.24.3
+numpy>=1.26.0
 pyyaml
 rawpy
 scipy
@@ -8,6 +8,8 @@ rawpy
 tifffile
 cython
 imagecodecs
-opencv-contrib-python
-opencv-python
+#opencv-contrib-python
+#opencv-python
 numba
+# Optional: Halide for GPU acceleration (install manually if needed)
+# halide

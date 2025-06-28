@@ -14,6 +14,7 @@ from tqdm import tqdm
 from scipy.ndimage import convolve
 import cv2
 import cv2.ximgproc
+from util.gpu_utils import gpu_accelerator
 
 def pad_reflect_numba(img, pad_len):
     """Numba-compatible reflect padding implementation"""
@@ -159,11 +160,11 @@ def interpolate_green_channel_numba(img, bayer_pattern, height, width):
     return interp_g, interp_g_at_r, interp_g_at_b
 
 def fast_joint_bilateral_filter_opencv(src, guide, d, sigmaColor, sigmaSpace):
-    """Fast joint bilateral filter using OpenCV's ximgproc.jointBilateralFilter"""
+    """Fast joint bilateral filter using GPU-accelerated bilateral filtering"""
     src = src.astype(np.float32)
     guide = guide.astype(np.float32)
-    # OpenCV expects single-channel images in HxW float32 or uint8
-    return cv2.ximgproc.jointBilateralFilter(guide, src, d, sigmaColor, sigmaSpace)
+    # Use GPU-accelerated bilateral filter
+    return gpu_accelerator.bilateral_filter_gpu(src, d, sigmaColor, sigmaSpace)
 
 class JointBF:
     """

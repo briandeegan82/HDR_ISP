@@ -73,7 +73,7 @@ digital_gain:
   is_auto: false
   is_enable: true
   # Array of pre-define Gains
-  gain_array: [0.25, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 32, 64]
+  gain_array: [0.2, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 32, 64]
   # Index of default gain
   current_gain: 0
   ae_feedback: 0
@@ -139,24 +139,24 @@ hdr_durand:
   is_save: True
   is_debug: false
   sigma_space: 20
-  sigma_color: 0.4
-  contrast_factor: 1.5
+  sigma_color: 1.0
+  contrast_factor: 1.1
   downsample_factor: 4
 
 
 color_space_conversion: 
-  conv_standard: 12
+  conv_standard: 2
   # Bt.709 HD =   1
   # Bt.601/4407 = 2
   is_save: false
 
 color_saturation_enhancement:
   is_enable: true
-  saturation_gain: 1.4
+  saturation_gain: 1.2
 
 
 ldci:
-  is_enable: true
+  is_enable: false
   clip_limit: 1.0
   wind: 128
   is_save: false
