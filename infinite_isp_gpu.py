@@ -22,7 +22,9 @@ from modules.dead_pixel_correction.dead_pixel_correction import (
 from modules.black_level_correction.black_level_correction_numba_fallback import (
     BlackLevelCorrectionNumbaFallback as BLC,
 )
-from modules.pwc_generation.pwc_generation import (PiecewiseCurve as PWC)
+from modules.pwc_generation.pwc_generation_numba_fallback import (
+    PiecewiseCurveNumbaFallback as PWC,
+)
 from modules.oecf.oecf import OECF
 from modules.digital_gain.digital_gain import DigitalGain as DG
 from modules.lens_shading_correction.lens_shading_correction import (
@@ -33,10 +35,8 @@ from modules.bayer_noise_reduction.bayer_noise_reduction_gpu import BayerNoiseRe
 from modules.auto_white_balance.auto_white_balance import AutoWhiteBalance as AWB
 from modules.white_balance.white_balance import WhiteBalance as WB
 from modules.hdr_durand.hdr_durand_gpu import HDRDurandToneMappingGPU as HDR
-from modules.demosaic.demosaic_gpu import DemosaicGPU as Demosaic
-from modules.color_correction_matrix.color_correction_matrix import (
-    ColorCorrectionMatrix as CCM,
-)
+from modules.demosaic.demosaic_opencv_cuda_fallback import DemosaicOpenCVCUDAFallback as Demosaic
+from modules.color_correction_matrix.color_correction_matrix_cuda_fallback import ColorCorrectionMatrixCUDAFallback as CCM
 from modules.gamma_correction.gamma_correction import GammaCorrection as GC
 from modules.auto_exposure.auto_exposure import AutoExposure as AE
 from modules.color_space_conversion.color_space_conversion_gpu import ColorSpaceConversionGPU as CSC

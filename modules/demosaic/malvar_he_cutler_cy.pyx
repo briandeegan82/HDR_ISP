@@ -246,6 +246,7 @@ class Malvar:
         """
         try:
             height, width = self.img.shape
+            print(f"[DEBUG] _create_masks: img.shape={self.img.shape}")
             bayer_pattern = self.sensor_info.get('bayer_pattern', 'RGGB').upper()
             
             # Create empty masks
@@ -276,7 +277,7 @@ class Malvar:
                 mask_r[1::2, 1::2] = 1
             else:
                 raise ValueError(f"Unsupported Bayer pattern: {bayer_pattern}")
-            
+            print(f"[DEBUG] _create_masks: mask_r.shape={mask_r.shape}, mask_g.shape={mask_g.shape}, mask_b.shape={mask_b.shape}")
             return mask_r, mask_g, mask_b
         except Exception as e:
             print(f"Error in _create_masks: {str(e)}")

@@ -181,7 +181,9 @@ class PiecewiseCurve:
             )
             # subtract pedestal
             
-            self.img = lut[self.img]
+            # Ensure image is integer type for LUT indexing
+            img_int = self.img.astype(np.int32)
+            self.img = lut[img_int]
             self.img = np.clip(self.img - self.parm_cmpd["pedestal"],0, None)
             #print(f"  Execution time: {time.time() - start:.3f}s")
         self.save()

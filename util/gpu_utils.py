@@ -233,6 +233,42 @@ class GPUAccelerator: # Corrected class name back to GPUAccelerator
             clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
             return clahe.apply(processed_src)
 
+    def filter2d_gpu(self, src: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+        """
+        Performs 2D convolution with GPU acceleration if available.
+        Falls back to CPU implementation if CUDA is not available.
+
+        Args:
+            src (np.ndarray): Input image (single channel, float32 or uint8)
+            kernel (np.ndarray): 2D convolution kernel (float32)
+
+        Returns:
+            np.ndarray: The filtered image
+        """
+        if not self.cuda_available:
+            print("CUDA not available, falling back to CPU filter2D.")
+            return cv2.filter2D(src, -1, kernel)
+        try:
+            # Ensure input is in the correct format
+            if src.dtype != np.float32:
+                src = src.astype(np.float32)
+            if kernel.dtype != np.float32:
+                kernel = kernel.astype(np.float32)
+            # Upload to GPU
+            gpu_src = cv2.cuda_GpuMat()
+            gpu_src.upload(src)
+            # Create CUDA filter
+            gpu_kernel = cv2.cuda_GpuMat()
+            gpu_kernel.upload(kernel)
+            gpu_filter = cv2.cuda.createLinearFilter(cv2.CV_32F, cv2.CV_32F, kernel)
+            gpu_dst = gpu_filter.apply(gpu_src)
+            # Download result
+            dst = gpu_dst.download()
+            return dst
+        except Exception as e:
+            print(f"GPU filter2D failed ({e}), falling back to CPU.")
+            return cv2.filter2D(src, -1, kernel)
+
 # Create global instance
 gpu_accelerator = GPUAccelerator()
 
