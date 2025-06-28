@@ -13,3 +13,4 @@ imagecodecs
 numba
 # Optional: Halide for GPU acceleration (install manually if needed)
 # halide
+# cupy 

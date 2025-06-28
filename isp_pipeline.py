@@ -15,6 +15,18 @@ import io
 import numpy as np
 import os
 
+# Numba warm-up: run with a small dummy image
+try:
+    from modules.color_space_conversion.color_space_conversion_numba import ColorSpaceConversionNumba
+    dummy_img = np.random.randint(0, 256, (10, 10, 3), dtype=np.uint8)
+    platform = {"in_file": "dummy"}
+    sensor_info = {"output_bit_depth": 10}
+    parm_csc = {"is_save": False, "conv_standard": 1}
+    parm_cse = {"is_enable": True, "saturation_gain": 1.0}
+    _ = ColorSpaceConversionNumba(dummy_img, platform, sensor_info, parm_csc, parm_cse).execute()
+except Exception as e:
+    print(f"Numba warm-up failed: {e}")
+
 def get_file_size_mb(file_path):
     """Get file size in megabytes"""
     return os.path.getsize(file_path) / (1024 * 1024)

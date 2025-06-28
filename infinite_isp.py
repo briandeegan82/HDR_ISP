@@ -39,11 +39,9 @@ from modules.white_balance.white_balance import WhiteBalance as WB
 from modules.hdr_durand.hdr_durand_fast import HDRDurandToneMapping as HDR
 from modules.demosaic.demosaic_opencv_cuda_fallback import DemosaicOpenCVCUDAFallback as Demosaic
 from modules.color_correction_matrix.color_correction_matrix_cuda_fallback import ColorCorrectionMatrixCUDAFallback as CCM
-from modules.gamma_correction.gamma_correction import GammaCorrection as GC
-from modules.auto_exposure.auto_exposure import AutoExposure as AE
-from modules.color_space_conversion.color_space_conversion import (
-    ColorSpaceConversion as CSC,
-)
+from modules.gamma_correction.gamma_correction_numba_fallback import GammaCorrectionNumbaFallback as GC
+from modules.auto_exposure.auto_exposure_cuda_fallback import AutoExposureCUDAFallback as AE
+from modules.color_space_conversion.color_space_conversion_fallback import ColorSpaceConversionFallback as CSC
 from modules.ldci.ldci import LDCI
 from modules.sharpen.sharpen import Sharpening as SHARP
 from modules.noise_reduction_2d.noise_reduction_2d import NoiseReduction2d as NR2D
@@ -51,6 +49,15 @@ from modules.rgb_conversion.rgb_conversion import RGBConversion as RGBC
 from modules.scale.scale import Scale
 from modules.yuv_conv_format.yuv_conv_format import YUVConvFormat as YUV_C
 
+# Numba warm-up for gamma correction
+try:
+    from modules.gamma_correction.gamma_correction_numba_fallback import generate_gamma_lut_numba, apply_gamma_numba
+    import numpy as np
+    dummy_img = np.zeros((10, 10, 3), dtype=np.uint16)
+    dummy_lut = generate_gamma_lut_numba(12)
+    _ = apply_gamma_numba(dummy_img, dummy_lut)
+except Exception:
+    pass
 
 class InfiniteISP:
     """
