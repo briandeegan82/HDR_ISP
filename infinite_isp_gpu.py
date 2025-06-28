@@ -19,8 +19,8 @@ from modules.crop.crop import Crop
 from modules.dead_pixel_correction.dead_pixel_correction import (
     DeadPixelCorrection as DPC,
 )
-from modules.black_level_correction.black_level_correction import (
-    BlackLevelCorrection as BLC,
+from modules.black_level_correction.black_level_correction_numba_fallback import (
+    BlackLevelCorrectionNumbaFallback as BLC,
 )
 from modules.pwc_generation.pwc_generation import (PiecewiseCurve as PWC)
 from modules.oecf.oecf import OECF
