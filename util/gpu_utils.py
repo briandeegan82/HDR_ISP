@@ -269,6 +269,51 @@ class GPUAccelerator: # Corrected class name back to GPUAccelerator
             print(f"GPU filter2D failed ({e}), falling back to CPU.")
             return cv2.filter2D(src, -1, kernel)
 
+    def gaussian_filter_gpu(self, 
+                           src: np.ndarray, 
+                           ksize: Tuple[int, int], 
+                           sigma_x: float, 
+                           sigma_y: float = None) -> np.ndarray:
+        """
+        Performs Gaussian filtering with GPU acceleration if available.
+        Falls back to CPU implementation if CUDA is not available.
+
+        Args:
+            src (np.ndarray): Input image (single channel, float32 or uint8)
+            ksize (Tuple[int, int]): Gaussian kernel size (width, height)
+            sigma_x (float): Gaussian kernel standard deviation in X direction
+            sigma_y (float): Gaussian kernel standard deviation in Y direction (defaults to sigma_x)
+
+        Returns:
+            np.ndarray: The Gaussian filtered image
+        """
+        if sigma_y is None:
+            sigma_y = sigma_x
+            
+        if not self.cuda_available:
+            print("CUDA not available, falling back to CPU Gaussian filter.")
+            return cv2.GaussianBlur(src, ksize, sigma_x, sigma_y)
+        
+        try:
+            # Ensure input is in the correct format
+            if src.dtype != np.float32:
+                src = src.astype(np.float32)
+            
+            # Upload to GPU
+            gpu_src = cv2.cuda_GpuMat()
+            gpu_src.upload(src)
+            
+            # Apply Gaussian blur on GPU
+            gpu_dst = cv2.cuda.GaussianBlur(gpu_src, ksize, sigma_x, sigma_y)
+            
+            # Download result
+            dst = gpu_dst.download()
+            return dst
+            
+        except Exception as e:
+            print(f"GPU Gaussian filter failed ({e}), falling back to CPU.")
+            return cv2.GaussianBlur(src, ksize, sigma_x, sigma_y)
+
 # Create global instance
 gpu_accelerator = GPUAccelerator()
 

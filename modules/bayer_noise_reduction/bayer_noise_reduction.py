@@ -14,6 +14,13 @@ from util.gpu_utils import gpu_accelerator
 from scipy.ndimage import grey_dilation, gaussian_filter
 import cv2
 
+# Dummy profile decorator for normal runs (no-op if not using kernprof)
+try:
+    profile
+except NameError:
+    def profile(func):
+        return func
+
 def extract_channels_numpy(img, bayer_pattern, height, width):
     """Pure NumPy channel extraction (no Numba)"""
     img = img.astype(np.float32)
@@ -70,6 +77,7 @@ class BayerNoiseReduction:
         self.is_save = parm_bnr["is_save"]
         self.platform = platform
 
+    @profile
     def apply_bnr(self):
         """
         Apply bnr to the input image and return the output image
@@ -186,6 +194,7 @@ class BayerNoiseReduction:
                 self.sensor_info["bayer_pattern"],
             )
 
+    @profile
     def execute(self):
         """
         Appling BNR to input RAW image and returns the output image

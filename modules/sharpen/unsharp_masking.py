@@ -7,6 +7,13 @@ Author: 10xEngineers Pvt Ltd
 import numpy as np
 from scipy import ndimage
 
+# Dummy profile decorator for normal runs (no-op if not using kernprof)
+try:
+    profile
+except NameError:
+    def profile(func):
+        return func
+
 
 class UnsharpMasking:
     """
@@ -18,6 +25,7 @@ class UnsharpMasking:
         self.sharpen_sigma = sharpen_sigma
         self.sharpen_strength = sharpen_strength
 
+    @profile
     def apply_sharpen(self):
         """
         Applying sharpening to the input image

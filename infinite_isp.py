@@ -31,9 +31,7 @@ from modules.digital_gain.digital_gain import DigitalGain as DG
 from modules.lens_shading_correction.lens_shading_correction import (
     LensShadingCorrection as LSC,
 )
-from modules.bayer_noise_reduction.bayer_noise_reduction import (
-    BayerNoiseReduction as BNR,
-)
+from modules.bayer_noise_reduction.bayer_noise_reduction_gpu import BayerNoiseReductionGPU as BNR
 from modules.auto_white_balance.auto_white_balance import AutoWhiteBalance as AWB
 from modules.white_balance.white_balance import WhiteBalance as WB
 from modules.hdr_durand.hdr_durand_fast import HDRDurandToneMapping as HDR
@@ -43,7 +41,7 @@ from modules.gamma_correction.gamma_correction_numba_fallback import GammaCorrec
 from modules.auto_exposure.auto_exposure_cuda_fallback import AutoExposureCUDAFallback as AE
 from modules.color_space_conversion.color_space_conversion_fallback import ColorSpaceConversionFallback as CSC
 from modules.ldci.ldci import LDCI
-from modules.sharpen.sharpen import Sharpening as SHARP
+from modules.sharpen.sharpen_gpu import SharpeningGPU as SHARP
 from modules.noise_reduction_2d.noise_reduction_2d import NoiseReduction2d as NR2D
 from modules.rgb_conversion.rgb_conversion import RGBConversion as RGBC
 from modules.scale.scale import Scale

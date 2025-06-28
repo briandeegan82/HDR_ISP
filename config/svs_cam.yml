@@ -55,10 +55,10 @@ black_level_correction:
   gb_offset: 0
   b_offset: 0
   is_linear: true
-  r_sat: 4095
-  gr_sat: 4095
-  gb_sat: 4095
-  b_sat: 4095
+  r_sat: 65535
+  gr_sat: 65535
+  gb_sat: 65535
+  b_sat: 65535
   is_save: false
 
 oecf:

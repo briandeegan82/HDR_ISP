@@ -10,6 +10,13 @@ from modules.sharpen.unsharp_masking import UnsharpMasking as USM
 
 from util.utils import save_output_array_yuv
 
+# Dummy profile decorator for normal runs (no-op if not using kernprof)
+try:
+    profile
+except NameError:
+    def profile(func):
+        return func
+
 
 class Sharpening:
     """
@@ -25,6 +32,7 @@ class Sharpening:
         self.platform = platform
         self.conv_std = conv_std
 
+    @profile
     def apply_unsharp_masking(self):
         """
         Apply function for Shapening Algorithm - Unsharp Masking
@@ -47,6 +55,7 @@ class Sharpening:
                 self.conv_std,
             )
 
+    @profile
     def execute(self):
         """
         Applying sharpening to input image
