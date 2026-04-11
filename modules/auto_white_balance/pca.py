@@ -2,7 +2,7 @@
 File: norm_2.py
 Description: Implementation of Norm 2 GrayWorld - an AWB Algorithm
 Code / Paper  Reference: https://www.sciencedirect.com/science/article/abs/pii/0016003280900587
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 
 """
 import numpy as np

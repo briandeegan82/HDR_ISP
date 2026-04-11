@@ -2,7 +2,7 @@
 File: malvar_he_cutler.py
 Description: Implements the Malvar-He-Cutler algorithm for cfa interpolation
 Code / Paper  Reference: https://www.ipol.im/pub/art/2011/g_mhcd/article.pdf
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import numpy as np

@@ -1,7 +1,7 @@
 """
 File: joint_bf_numba.py
 Description: Numba-optimized joint bilateral filter for Bayer noise reduction
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

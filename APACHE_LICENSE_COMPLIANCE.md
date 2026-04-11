@@ -18,7 +18,7 @@ According to Apache License 2.0 Section 4 (Redistribution), derivative works mus
 
 Modified files carry notices in the following ways:
 
-1. **Source Code Headers**: Many files retain original "Author: 10xEngineers" attribution
+1. **Source Code Headers**: Files credit **Brian Deegan** as author and note that portions derive from **10xEngineers / Infinite-ISP**
    - Example: `modules/demosaic/demosaic.py`
    - Example: `modules/color_space_conversion/color_space_conversion.py`
 
@@ -37,15 +37,15 @@ Modified files carry notices in the following ways:
 ### ✅ Requirement 4(c): Retain Attribution Notices
 **Status**: COMPLIANT
 
-- [x] Original copyright notices retained in source files
-- [x] Attribution to 10xEngineers maintained
+- [x] Original copyright notices retained where required (NOTICE, upstream credits)
+- [x] Attribution to 10xEngineers / Infinite-ISP maintained for upstream-derived portions
 - [x] Links to original Infinite-ISP repository included
-- [x] README.md explicitly acknowledges original work
+- [x] README.md explicitly acknowledges Brian Deegan as developer and the upstream work
 
 **Examples**:
 ```python
 # From modules/color_space_conversion/color_space_conversion.py:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ```
 
 ### ✅ Requirement 4(d): Include NOTICE File
@@ -100,7 +100,7 @@ Author: 10xEngineers Pvt Ltd
    - Copyright notice
 
 4. **Source Files** ✅
-   - Original author attributions retained
+   - Headers credit Brian Deegan and note upstream (10xEngineers / Infinite-ISP) where applicable
    - New files have appropriate headers
    - Git history tracks all changes
 
@@ -150,7 +150,7 @@ All four redistribution requirements (4a-4d) are satisfied:
 3. Original attributions retained
 4. NOTICE file created with proper attribution
 
-The project maintains transparency about its derivative nature and properly credits the original Infinite-ISP work by 10xEngineers.
+The project maintains transparency about its derivative nature: BrilliantISP is developed by Brian Deegan and credits the original Infinite-ISP work by 10xEngineers where applicable.
 
 ---
 

@@ -5,7 +5,7 @@ Code / Paper  Reference: https://www.ipol.im/pub/art/2011/bcm_nlm/article.pdf
 Implementation inspired from:
 Fast Open ISP Author: Qiu Jueqin (qiujueqin@gmail.com)
 & scikit-image (nl_means_denoising)
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import numpy as np

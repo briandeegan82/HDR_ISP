@@ -2,7 +2,7 @@
 File: non_local_means_optimized.py
 Description: Optimized non-local means filter using NumPy broadcast operations
 Code / Paper  Reference:
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

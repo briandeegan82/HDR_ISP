@@ -3,7 +3,7 @@ from util.debug_utils import get_debug_logger
 File: digital_gain.py
 Description: Applies digital gain; operates on linear scene-referred data.
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

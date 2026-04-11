@@ -1,7 +1,7 @@
 """
 File: directional_dpc_hybrid.py
 Description: Hybrid Directional Dead Pixel Correction using NumPy/SciPy operations
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

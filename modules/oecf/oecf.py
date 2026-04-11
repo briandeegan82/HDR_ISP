@@ -3,7 +3,7 @@ from util.debug_utils import get_debug_logger
 File: oecf.py
 Description: Implements the opto electronic conversion function as a LUT
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

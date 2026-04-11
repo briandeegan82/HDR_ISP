@@ -7,7 +7,7 @@ https://arxiv.org/ftp/arxiv/papers/2108/2108.12818.pdf#:~:text
 =The%20technique%20to%20equalize%20the,a%20linear%20trend%20(CDF).
 Implementation inspired from: MATLAB &
 Fast Open ISP Author: Qiu Jueqin (qiujueqin@gmail.com)
-Author: x10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import math

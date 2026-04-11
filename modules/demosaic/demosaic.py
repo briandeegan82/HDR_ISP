@@ -1,7 +1,7 @@
 """
 File: demosaic.py
 Description: Implements the cfa interpolation algorithms
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

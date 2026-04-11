@@ -3,7 +3,7 @@ from util.debug_utils import get_debug_logger
 File: sharpen.py
 Description: Implements sharpening for Brilliant-ISP with GPU acceleration.
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 """
 
 import time

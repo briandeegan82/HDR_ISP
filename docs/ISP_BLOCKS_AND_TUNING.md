@@ -2,6 +2,8 @@
 
 This document describes each processing block in **BrilliantISP** as wired in `brilliant_isp.py`, the YAML keys that control it, and practical tuning notes. Implementation details live under `modules/`; configuration merges from `config/base_hdr.yml` plus optional camera overlays (see below).
 
+**BrilliantISP** is developed by **Brian Deegan**; portions of the codebase derive from **Infinite-ISP** (10xEngineers).
+
 ## How configuration is loaded
 
 - **Merged base + camera**: If you pass a file whose name ends in `_cam.yml` (e.g. `config/AD_cam.yml`), `util/config_merge.py` loads `config/base_hdr.yml` first, then merges your camera file so later keys override earlier ones.

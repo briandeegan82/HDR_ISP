@@ -1,7 +1,7 @@
 """File: utils.py
 Description: Common helper functions for all algorithms
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 

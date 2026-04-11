@@ -2,7 +2,7 @@
 File: crop.py
 Description: Crops the bayer image keeping cfa pattern intact
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 

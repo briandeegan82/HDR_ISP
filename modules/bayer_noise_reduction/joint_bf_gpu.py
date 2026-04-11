@@ -3,7 +3,7 @@ File: joint_bf_gpu.py
 Description: GPU-accelerated noise reduction in bayer domain using joint bilateral filter
 Code / Paper  Reference:
 https://www.researchgate.net/publication/261753644_Green_Channel_Guiding_Denoising_on_Bayer_Image
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

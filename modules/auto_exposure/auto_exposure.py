@@ -3,7 +3,7 @@ File: auto_exposure.py
 Description: 3A-AE Runs the Auto exposure algorithm in a loop
 Code / Paper  Reference: https://www.atlantis-press.com/article/25875811.pdf
                          http://tomlr.free.fr/Math%E9matiques/Math%20Complete/Probability%20and%20statistics/CRC%20-%20standard%20probability%20and%20Statistics%20tables%20and%20formulae%20-%20DANIEL%20ZWILLINGER.pdf
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

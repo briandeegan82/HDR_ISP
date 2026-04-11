@@ -1,7 +1,7 @@
 """
 File: directional_dpc.py
 Description: Directional Dead Pixel Correction using median-based detection
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

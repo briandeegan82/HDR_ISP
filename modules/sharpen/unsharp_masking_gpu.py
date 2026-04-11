@@ -2,7 +2,7 @@
 File: unsharp_masking_gpu.py
 Description: GPU-accelerated unsharp masking with frequency and strength control.
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 """
 import logging
 import numpy as np

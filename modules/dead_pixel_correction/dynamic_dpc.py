@@ -3,7 +3,7 @@ File: dynamic_dpc.py
 Description: Dynamic dead pixel correction implementation
 Code / Paper  Reference: https://ieeexplore.ieee.org/document/9194921
 Implementation inspired from: (OpenISP) https://github.com/cruxopen/openISP
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 

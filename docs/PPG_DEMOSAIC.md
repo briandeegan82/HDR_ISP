@@ -445,7 +445,7 @@ When modifying PPG implementation:
 
 ## License
 
-Part of brilliantISP project by 10xEngineers.
+Part of BrilliantISP (Brian Deegan; portions derived from 10xEngineers / Infinite-ISP).
 PPG implementation by Brian Deegan (via AI assistance).
 
 ---

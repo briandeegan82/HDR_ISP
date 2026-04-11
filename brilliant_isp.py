@@ -2,7 +2,7 @@
 File: isp_pipeline.py
 Description: Executes the complete pipeline
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time
@@ -215,6 +215,7 @@ class BrilliantISP:
         self.c_yaml: PipelineConfig | None = None
         self.raw: np.ndarray | None = None
         self.decompanded_img: np.ndarray | None = None
+        self.last_output_rgb: np.ndarray | None = None
         self.awb_gains: AWBGains = (1.0, 1.0)
         self.ae_feedback: int | None = None
         self.dga_current_gain: int = 0
@@ -842,6 +843,8 @@ class BrilliantISP:
             short_names = self.platform.get("short_output_names", False)
             if not short_names:
                 self.outFileName = self.outFileName + "TM_" + str(self.tone_mapper) + "_s_" + str(self.parm_cse['saturation_gain']) + "_CCM_" + str(self.parm_ccm['is_enable']) + "_Before_Demosaic_" + str(self.tone_mapping_before_demosaic)
+
+            self.last_output_rgb = np.asarray(out_rgb).copy()
 
             # Plot histograms if enabled (debug feature)
             if self.platform.get('plot_histograms', False):

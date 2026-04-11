@@ -2,7 +2,7 @@
 File: malvar_he_cutler_cupy.py
 Description: CuPy-accelerated Malvar-He-Cutler algorithm for CFA interpolation
 Code / Paper  Reference: https://www.ipol.im/pub/art/2011/g_mhcd/article.pdf
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

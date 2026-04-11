@@ -9,7 +9,7 @@ Code / Paper  Reference: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conver
                          8-bit-yuv-formats-for-video-rendering
                          https://web.archive.org/web/20180423091842/http://www.equasys.de/
                          colorconversion.html
-                         Author: 10xEngineers Pvt Ltd
+                         Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------------------------
 """
 

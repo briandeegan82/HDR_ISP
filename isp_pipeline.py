@@ -2,7 +2,7 @@
 File: isp_pipeline.py
 Description: Executes the complete pipeline
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 

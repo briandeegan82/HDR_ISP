@@ -4,7 +4,7 @@ File: scale.py
 Description: Implements both hardware friendly and non hardware freindly scaling with GPU acceleration
 Code / Paper  Reference:
 https://patentimages.storage.googleapis.com/f9/11/65/a2b66f52c6dbd4/US8538199.pdf
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 Note: The scaling algorithms (Bilinear and Nearest Neighbor) have been migrated to use OpenCV's 
 resize function for significantly improved performance. The original nested loop implementations 

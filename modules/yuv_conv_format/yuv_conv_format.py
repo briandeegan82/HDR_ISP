@@ -9,7 +9,7 @@ Code / Paper  Reference:
   for-video-rendering
 - https://www.flir.com/support-center/iis/machine-vision/knowledge-base/understanding-yuv-
   data-formats/
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

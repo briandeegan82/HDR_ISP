@@ -2,7 +2,7 @@
 File: clahe_optimized.py
 Description: Optimized CLAHE implementation using NumPy broadcast operations
 Code / Paper  Reference:
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

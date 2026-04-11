@@ -3,7 +3,7 @@ from util.debug_utils import get_debug_logger
 File: color_correction_matrix.py
 Description: Applies the 3x3 correction matrix on the image
 Code / Paper  Reference: https://www.imatest.com/docs/colormatrix/
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

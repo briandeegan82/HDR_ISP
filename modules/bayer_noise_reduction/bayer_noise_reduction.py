@@ -2,7 +2,7 @@ from util.debug_utils import get_debug_logger
 """
 File: bayer_noise_reduction.py
 Description: Noise reduction in Bayer domain with optional GPU acceleration.
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 

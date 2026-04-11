@@ -2,7 +2,7 @@ from util.debug_utils import get_debug_logger
 """
 File: noise_reduction_2d.py
 Description: Apply denoising algorithms on luminance channel with NumPy optimizations
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

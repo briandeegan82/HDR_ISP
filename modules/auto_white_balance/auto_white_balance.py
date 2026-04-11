@@ -5,7 +5,7 @@ Description: 3A - AWB Runs the AWB algorithm based on selection from config file
 Code / Paper  Reference: https://www.sciencedirect.com/science/article/abs/pii/0016003280900587
                          https://library.imaging.org/admin/apis/public/api/ist/website/downloadArticle/cic/12/1/art00008
                          https://opg.optica.org/josaa/viewmedia.cfm?uri=josaa-31-5-1049&seq=0
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

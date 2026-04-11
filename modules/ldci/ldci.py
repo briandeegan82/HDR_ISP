@@ -2,7 +2,7 @@ from util.debug_utils import get_debug_logger
 """
 File: ldci.py
 Description: Implements the contrast adjustment in the yuv domain
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

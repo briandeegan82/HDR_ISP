@@ -2,7 +2,7 @@
 File: isp_pipeline_multiple_configs.py
 Description: Executes the ISP pipeline with multiple configurations on the same image
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

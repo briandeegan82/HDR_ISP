@@ -2,7 +2,7 @@
 File: sharpen.py
 Description: Simple unsharp masking with frequency and strength control.
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 """
 import numpy as np
 from scipy import ndimage

@@ -1,6 +1,6 @@
 # BrilliantISP / HDR-ISP
 
-This project is a derivative work based on [Infinite-ISP](https://github.com/10x-Engineers/Infinite-ISP) by 10xEngineers, which in turn is based on FastOpenISP and OpenISP. Standing on the shoulders of giants.
+**BrilliantISP** is developed by **Brian Deegan**. It is based in part on [Infinite-ISP](https://github.com/10x-Engineers/Infinite-ISP) from **10xEngineers**, which in turn draws on FastOpenISP and OpenISP. Standing on the shoulders of giants.
 
 **License**: Apache License 2.0 (see LICENSE and NOTICE files)
 
@@ -47,13 +47,15 @@ See `config/base_hdr.yml` (defaults) and a camera overlay such as `config/AD_cam
 
 ## Acknowledgments
 
-This project is a derivative work licensed under Apache License 2.0.
+BrilliantISP is licensed under Apache License 2.0.
 
-**Original Work**: [Infinite-ISP](https://github.com/10x-Engineers/Infinite-ISP) by 10xEngineers  
+**Developer**: Brian Deegan  
+
+**Upstream implementation (portions of this codebase)**: [Infinite-ISP](https://github.com/10x-Engineers/Infinite-ISP) by 10xEngineers  
 **Copyright**: 2024, 10xEngineers  
 **License**: Apache License 2.0
 
-This derivative work includes significant modifications and enhancements (see NOTICE file for details).
+This project includes substantial modifications and additions beyond Infinite-ISP (see NOTICE file).
 
 Additional acknowledgments:
 - cruxopen for the original openISP

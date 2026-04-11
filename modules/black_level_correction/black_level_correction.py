@@ -2,7 +2,7 @@
 File: black_level_correction.py
 Description: Implements black level correction and image linearization based on config file params
 Code / Paper  Reference:
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

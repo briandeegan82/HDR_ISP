@@ -3,7 +3,7 @@ File: dynamic_dpc_numba.py
 Description: Numba-optimized dead pixel correction
 Code / Paper  Reference: https://ieeexplore.ieee.org/document/9194921
 Implementation inspired from: (OpenISP) https://github.com/cruxopen/openISP
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging

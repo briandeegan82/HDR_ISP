@@ -3,7 +3,7 @@ from util.debug_utils import get_debug_logger
 File: color_correction_matrix_optimized.py
 Description: CCM on linear RGB; expects linear demosaic output.
 Code / Paper  Reference: https://www.imatest.com/docs/colormatrix/
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import time

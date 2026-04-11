@@ -2,7 +2,7 @@
 File: gray_world.py
 Description: Implementation of Gray_World - an AWB Algorithm
 Code / Paper  Reference: https://www.sciencedirect.com/science/article/abs/pii/0016003280900587
-Author: 10xEngineers
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 
 """
 import numpy as np

@@ -214,5 +214,5 @@ When modifying the VNG implementation:
 
 ## License
 
-Part of brilliantISP project by 10xEngineers.
+Part of BrilliantISP (Brian Deegan; portions derived from 10xEngineers / Infinite-ISP).
 VNG implementation by Brian Deegan (via AI assistance).

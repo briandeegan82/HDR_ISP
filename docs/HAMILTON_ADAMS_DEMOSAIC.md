@@ -378,5 +378,5 @@ When modifying the Hamilton-Adams implementation:
 
 ## License
 
-Part of brilliantISP project by 10xEngineers.
+Part of BrilliantISP (Brian Deegan; portions derived from 10xEngineers / Infinite-ISP).
 Hamilton-Adams implementation by Brian Deegan (via AI assistance).

@@ -3,7 +3,7 @@ File: scale_gpu.py
 Description: GPU-accelerated scaling implementation with CPU fallback
 Code / Paper  Reference:
 https://patentimages.storage.googleapis.com/f9/11/65/a2b66f52c6dbd4/US8538199.pdf
-Author: 10xEngineers Pvt Ltd
+Author: Brian Deegan (based in part on 10xEngineers / Infinite-ISP)
 ------------------------------------------------------------
 """
 import logging
