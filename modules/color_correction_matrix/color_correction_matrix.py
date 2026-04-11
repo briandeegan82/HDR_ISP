@@ -9,13 +9,20 @@ Author: 10xEngineers Pvt Ltd
 import time
 import numpy as np
 
+from util.isp_types import ColorCorrectionMatrixConfig, PlatformConfig, RGBImage, SensorInfo, UInt16Image
 from util.utils import save_output_array
 
 
 class ColorCorrectionMatrix:
     "Apply the color correction 3x3 matrix"
 
-    def __init__(self, img, platform, sensor_info, parm_ccm):
+    def __init__(
+        self,
+        img: RGBImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_ccm: ColorCorrectionMatrixConfig,
+    ) -> None:
         self.img = img
         self.enable = parm_ccm["is_enable"]
         self.sensor_info = sensor_info
@@ -27,7 +34,7 @@ class ColorCorrectionMatrix:
         # Initialize debug logger
         self.logger = get_debug_logger("ColorCorrectionMatrix", config=self.platform)
 
-    def apply_ccm(self):
+    def apply_ccm(self) -> UInt16Image:
         """
         Apply CCM Params
         """
@@ -35,10 +42,10 @@ class ColorCorrectionMatrix:
         r_2 = np.array(self.parm_ccm["corrected_green"])
         r_3 = np.array(self.parm_ccm["corrected_blue"])
 
-        self.ccm_mat = np.float32([r_1, r_2, r_3])
+        self.ccm_mat = np.array([r_1, r_2, r_3], dtype=np.float32)
 
         # normalize nbit to 0-1 img
-        self.img = np.float32(self.img) / (2**self.output_bit_depth - 1)
+        self.img = self.img.astype(np.float32) / (2**self.output_bit_depth - 1)
 
         # convert to nx3
         img1 = self.img.reshape(((self.img.shape[0] * self.img.shape[1], 3)))
@@ -47,15 +54,15 @@ class ColorCorrectionMatrix:
         out = np.matmul(img1, self.ccm_mat.transpose())
 
         # clipping after ccm is must to eliminate neg values
-        out = np.float32(np.clip(out, 0, 1))
+        out = np.clip(out, 0, 1).astype(np.float32)
 
         # convert back
         out = out.reshape(self.img.shape).astype(self.img.dtype)
-        out = np.uint16(out * (2**self.output_bit_depth - 1))
+        out = (out * (2**self.output_bit_depth - 1)).astype(np.uint16)
 
         return out
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -69,7 +76,7 @@ class ColorCorrectionMatrix:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> RGBImage | UInt16Image:
         """Execute ccm if enabled."""
         self.logger.info(f"Color Correction Matrix = {self.enable}")
 

@@ -1,0 +1,1192 @@
+{
+  "base": {
+    "focus_block": null,
+    "runs": [
+      {
+        "wall_time_seconds": 4.510182660999817,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.247,
+          "black_level_correction": 0.012,
+          "companding": 0.013,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.052,
+          "bayer_noise_reduction": 1.905,
+          "auto_white_balance": 0.112,
+          "white_balance": 0.009,
+          "tone_mapping": 0.176,
+          "demosaic": 0.361,
+          "color_correction_matrix": 0.023,
+          "auto_exposure": 0.149,
+          "color_space_conversion": 0.239,
+          "sharpen": 0.046,
+          "rgb_conversion": 0.068,
+          "gamma_correction": 0.014
+        }
+      },
+      {
+        "wall_time_seconds": 4.418449531000078,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.223,
+          "black_level_correction": 0.011,
+          "companding": 0.012,
+          "digital_gain": 0.007,
+          "lens_shading_correction": 0.053,
+          "bayer_noise_reduction": 1.845,
+          "auto_white_balance": 0.109,
+          "white_balance": 0.009,
+          "tone_mapping": 0.175,
+          "demosaic": 0.361,
+          "color_correction_matrix": 0.031,
+          "auto_exposure": 0.148,
+          "color_space_conversion": 0.232,
+          "sharpen": 0.047,
+          "rgb_conversion": 0.066,
+          "gamma_correction": 0.014
+        }
+      },
+      {
+        "wall_time_seconds": 4.461877722999816,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.224,
+          "black_level_correction": 0.012,
+          "companding": 0.013,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.052,
+          "bayer_noise_reduction": 1.874,
+          "auto_white_balance": 0.113,
+          "white_balance": 0.008,
+          "tone_mapping": 0.175,
+          "demosaic": 0.359,
+          "color_correction_matrix": 0.022,
+          "auto_exposure": 0.148,
+          "color_space_conversion": 0.247,
+          "sharpen": 0.046,
+          "rgb_conversion": 0.072,
+          "gamma_correction": 0.013
+        }
+      }
+    ],
+    "summary": {
+      "wall_time_seconds": {
+        "mean": 4.463503304999904,
+        "stdev": 0.04588816484145441,
+        "min": 4.418449531000078,
+        "max": 4.510182660999817
+      },
+      "blocks": {
+        "dead_pixel_correction": {
+          "mean": 1.2313333333333334,
+          "stdev": 0.013576941236277576,
+          "min": 1.223,
+          "max": 1.247,
+          "runs_observed": 3
+        },
+        "black_level_correction": {
+          "mean": 0.011666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.011,
+          "max": 0.012,
+          "runs_observed": 3
+        },
+        "companding": {
+          "mean": 0.012666666666666666,
+          "stdev": 0.0005773502691896253,
+          "min": 0.012,
+          "max": 0.013,
+          "runs_observed": 3
+        },
+        "digital_gain": {
+          "mean": 0.007666666666666666,
+          "stdev": 0.0005773502691896258,
+          "min": 0.007,
+          "max": 0.008,
+          "runs_observed": 3
+        },
+        "lens_shading_correction": {
+          "mean": 0.052333333333333336,
+          "stdev": 0.0005773502691896262,
+          "min": 0.052,
+          "max": 0.053,
+          "runs_observed": 3
+        },
+        "bayer_noise_reduction": {
+          "mean": 1.874666666666667,
+          "stdev": 0.030005555041247526,
+          "min": 1.845,
+          "max": 1.905,
+          "runs_observed": 3
+        },
+        "auto_white_balance": {
+          "mean": 0.11133333333333334,
+          "stdev": 0.0020816659994661348,
+          "min": 0.109,
+          "max": 0.113,
+          "runs_observed": 3
+        },
+        "white_balance": {
+          "mean": 0.008666666666666666,
+          "stdev": 0.0005773502691896253,
+          "min": 0.008,
+          "max": 0.009,
+          "runs_observed": 3
+        },
+        "tone_mapping": {
+          "mean": 0.17533333333333334,
+          "stdev": 0.0005773502691896262,
+          "min": 0.175,
+          "max": 0.176,
+          "runs_observed": 3
+        },
+        "demosaic": {
+          "mean": 0.36033333333333334,
+          "stdev": 0.0011547005383792525,
+          "min": 0.359,
+          "max": 0.361,
+          "runs_observed": 3
+        },
+        "color_correction_matrix": {
+          "mean": 0.025333333333333333,
+          "stdev": 0.0049328828623162475,
+          "min": 0.022,
+          "max": 0.031,
+          "runs_observed": 3
+        },
+        "auto_exposure": {
+          "mean": 0.14833333333333332,
+          "stdev": 0.0005773502691896262,
+          "min": 0.148,
+          "max": 0.149,
+          "runs_observed": 3
+        },
+        "color_space_conversion": {
+          "mean": 0.23933333333333331,
+          "stdev": 0.007505553499465128,
+          "min": 0.232,
+          "max": 0.247,
+          "runs_observed": 3
+        },
+        "sharpen": {
+          "mean": 0.04633333333333334,
+          "stdev": 0.0005773502691896262,
+          "min": 0.046,
+          "max": 0.047,
+          "runs_observed": 3
+        },
+        "rgb_conversion": {
+          "mean": 0.06866666666666667,
+          "stdev": 0.0030550504633038884,
+          "min": 0.066,
+          "max": 0.072,
+          "runs_observed": 3
+        },
+        "gamma_correction": {
+          "mean": 0.013666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.013,
+          "max": 0.014,
+          "runs_observed": 3
+        }
+      }
+    }
+  },
+  "crop_enabled": {
+    "focus_block": "crop",
+    "runs": [
+      {
+        "wall_time_seconds": 0.10820003299977543,
+        "block_timings_seconds": {
+          "crop": 0.0,
+          "dead_pixel_correction": 0.019,
+          "black_level_correction": 0.0,
+          "companding": 0.0,
+          "digital_gain": 0.0,
+          "lens_shading_correction": 0.001,
+          "bayer_noise_reduction": 0.034,
+          "auto_white_balance": 0.003,
+          "white_balance": 0.0,
+          "tone_mapping": 0.006,
+          "demosaic": 0.011,
+          "color_correction_matrix": 0.001,
+          "auto_exposure": 0.006,
+          "color_space_conversion": 0.01,
+          "sharpen": 0.002,
+          "rgb_conversion": 0.006,
+          "gamma_correction": 0.001
+        }
+      },
+      {
+        "wall_time_seconds": 0.11192308599947864,
+        "block_timings_seconds": {
+          "crop": 0.0,
+          "dead_pixel_correction": 0.021,
+          "black_level_correction": 0.0,
+          "companding": 0.0,
+          "digital_gain": 0.0,
+          "lens_shading_correction": 0.001,
+          "bayer_noise_reduction": 0.035,
+          "auto_white_balance": 0.003,
+          "white_balance": 0.0,
+          "tone_mapping": 0.006,
+          "demosaic": 0.012,
+          "color_correction_matrix": 0.001,
+          "auto_exposure": 0.005,
+          "color_space_conversion": 0.01,
+          "sharpen": 0.002,
+          "rgb_conversion": 0.006,
+          "gamma_correction": 0.001
+        }
+      },
+      {
+        "wall_time_seconds": 0.11306803400020726,
+        "block_timings_seconds": {
+          "crop": 0.0,
+          "dead_pixel_correction": 0.021,
+          "black_level_correction": 0.0,
+          "companding": 0.0,
+          "digital_gain": 0.0,
+          "lens_shading_correction": 0.001,
+          "bayer_noise_reduction": 0.035,
+          "auto_white_balance": 0.003,
+          "white_balance": 0.0,
+          "tone_mapping": 0.006,
+          "demosaic": 0.012,
+          "color_correction_matrix": 0.001,
+          "auto_exposure": 0.006,
+          "color_space_conversion": 0.01,
+          "sharpen": 0.002,
+          "rgb_conversion": 0.006,
+          "gamma_correction": 0.001
+        }
+      }
+    ],
+    "summary": {
+      "wall_time_seconds": {
+        "mean": 0.11106371766648711,
+        "stdev": 0.002545239455112782,
+        "min": 0.10820003299977543,
+        "max": 0.11306803400020726
+      },
+      "blocks": {
+        "crop": {
+          "mean": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "runs_observed": 3
+        },
+        "dead_pixel_correction": {
+          "mean": 0.02033333333333333,
+          "stdev": 0.0011547005383792525,
+          "min": 0.019,
+          "max": 0.021,
+          "runs_observed": 3
+        },
+        "black_level_correction": {
+          "mean": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "runs_observed": 3
+        },
+        "companding": {
+          "mean": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "runs_observed": 3
+        },
+        "digital_gain": {
+          "mean": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "runs_observed": 3
+        },
+        "lens_shading_correction": {
+          "mean": 0.001,
+          "stdev": 0.0,
+          "min": 0.001,
+          "max": 0.001,
+          "runs_observed": 3
+        },
+        "bayer_noise_reduction": {
+          "mean": 0.03466666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.034,
+          "max": 0.035,
+          "runs_observed": 3
+        },
+        "auto_white_balance": {
+          "mean": 0.0030000000000000005,
+          "stdev": 0.0,
+          "min": 0.003,
+          "max": 0.003,
+          "runs_observed": 3
+        },
+        "white_balance": {
+          "mean": 0.0,
+          "stdev": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "runs_observed": 3
+        },
+        "tone_mapping": {
+          "mean": 0.006000000000000001,
+          "stdev": 0.0,
+          "min": 0.006,
+          "max": 0.006,
+          "runs_observed": 3
+        },
+        "demosaic": {
+          "mean": 0.011666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.011,
+          "max": 0.012,
+          "runs_observed": 3
+        },
+        "color_correction_matrix": {
+          "mean": 0.001,
+          "stdev": 0.0,
+          "min": 0.001,
+          "max": 0.001,
+          "runs_observed": 3
+        },
+        "auto_exposure": {
+          "mean": 0.005666666666666667,
+          "stdev": 0.0005773502691896258,
+          "min": 0.005,
+          "max": 0.006,
+          "runs_observed": 3
+        },
+        "color_space_conversion": {
+          "mean": 0.01,
+          "stdev": 0.0,
+          "min": 0.01,
+          "max": 0.01,
+          "runs_observed": 3
+        },
+        "sharpen": {
+          "mean": 0.002,
+          "stdev": 0.0,
+          "min": 0.002,
+          "max": 0.002,
+          "runs_observed": 3
+        },
+        "rgb_conversion": {
+          "mean": 0.006000000000000001,
+          "stdev": 0.0,
+          "min": 0.006,
+          "max": 0.006,
+          "runs_observed": 3
+        },
+        "gamma_correction": {
+          "mean": 0.001,
+          "stdev": 0.0,
+          "min": 0.001,
+          "max": 0.001,
+          "runs_observed": 3
+        }
+      }
+    }
+  },
+  "oecf_enabled": {
+    "focus_block": "oecf",
+    "runs": [
+      {
+        "wall_time_seconds": 4.3639850919998935,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.231,
+          "black_level_correction": 0.01,
+          "companding": 0.012,
+          "oecf": 0.001,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.051,
+          "bayer_noise_reduction": 1.811,
+          "auto_white_balance": 0.115,
+          "white_balance": 0.008,
+          "tone_mapping": 0.182,
+          "demosaic": 0.359,
+          "color_correction_matrix": 0.026,
+          "auto_exposure": 0.148,
+          "color_space_conversion": 0.205,
+          "sharpen": 0.046,
+          "rgb_conversion": 0.065,
+          "gamma_correction": 0.013
+        }
+      },
+      {
+        "wall_time_seconds": 4.376695650000329,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.222,
+          "black_level_correction": 0.011,
+          "companding": 0.013,
+          "oecf": 0.001,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.05,
+          "bayer_noise_reduction": 1.812,
+          "auto_white_balance": 0.115,
+          "white_balance": 0.008,
+          "tone_mapping": 0.183,
+          "demosaic": 0.365,
+          "color_correction_matrix": 0.023,
+          "auto_exposure": 0.149,
+          "color_space_conversion": 0.207,
+          "sharpen": 0.047,
+          "rgb_conversion": 0.071,
+          "gamma_correction": 0.014
+        }
+      },
+      {
+        "wall_time_seconds": 4.537722211000073,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.237,
+          "black_level_correction": 0.011,
+          "companding": 0.013,
+          "oecf": 0.001,
+          "digital_gain": 0.009,
+          "lens_shading_correction": 0.055,
+          "bayer_noise_reduction": 1.898,
+          "auto_white_balance": 0.116,
+          "white_balance": 0.009,
+          "tone_mapping": 0.188,
+          "demosaic": 0.42,
+          "color_correction_matrix": 0.023,
+          "auto_exposure": 0.146,
+          "color_space_conversion": 0.213,
+          "sharpen": 0.047,
+          "rgb_conversion": 0.066,
+          "gamma_correction": 0.013
+        }
+      }
+    ],
+    "summary": {
+      "wall_time_seconds": {
+        "mean": 4.426134317666765,
+        "stdev": 0.09684669857612535,
+        "min": 4.3639850919998935,
+        "max": 4.537722211000073
+      },
+      "blocks": {
+        "dead_pixel_correction": {
+          "mean": 1.2300000000000002,
+          "stdev": 0.007549834435270815,
+          "min": 1.222,
+          "max": 1.237,
+          "runs_observed": 3
+        },
+        "black_level_correction": {
+          "mean": 0.010666666666666666,
+          "stdev": 0.0005773502691896253,
+          "min": 0.01,
+          "max": 0.011,
+          "runs_observed": 3
+        },
+        "companding": {
+          "mean": 0.012666666666666666,
+          "stdev": 0.0005773502691896253,
+          "min": 0.012,
+          "max": 0.013,
+          "runs_observed": 3
+        },
+        "oecf": {
+          "mean": 0.001,
+          "stdev": 0.0,
+          "min": 0.001,
+          "max": 0.001,
+          "runs_observed": 3
+        },
+        "digital_gain": {
+          "mean": 0.008333333333333333,
+          "stdev": 0.0005773502691896253,
+          "min": 0.008,
+          "max": 0.009,
+          "runs_observed": 3
+        },
+        "lens_shading_correction": {
+          "mean": 0.052,
+          "stdev": 0.0026457513110645903,
+          "min": 0.05,
+          "max": 0.055,
+          "runs_observed": 3
+        },
+        "bayer_noise_reduction": {
+          "mean": 1.8403333333333334,
+          "stdev": 0.04994330118577794,
+          "min": 1.811,
+          "max": 1.898,
+          "runs_observed": 3
+        },
+        "auto_white_balance": {
+          "mean": 0.11533333333333334,
+          "stdev": 0.0005773502691896262,
+          "min": 0.115,
+          "max": 0.116,
+          "runs_observed": 3
+        },
+        "white_balance": {
+          "mean": 0.008333333333333333,
+          "stdev": 0.0005773502691896253,
+          "min": 0.008,
+          "max": 0.009,
+          "runs_observed": 3
+        },
+        "tone_mapping": {
+          "mean": 0.18433333333333332,
+          "stdev": 0.0032145502536643214,
+          "min": 0.182,
+          "max": 0.188,
+          "runs_observed": 3
+        },
+        "demosaic": {
+          "mean": 0.3813333333333333,
+          "stdev": 0.0336204302966713,
+          "min": 0.359,
+          "max": 0.42,
+          "runs_observed": 3
+        },
+        "color_correction_matrix": {
+          "mean": 0.023999999999999997,
+          "stdev": 0.0017320508075688767,
+          "min": 0.023,
+          "max": 0.026,
+          "runs_observed": 3
+        },
+        "auto_exposure": {
+          "mean": 0.14766666666666664,
+          "stdev": 0.0015275252316519481,
+          "min": 0.146,
+          "max": 0.149,
+          "runs_observed": 3
+        },
+        "color_space_conversion": {
+          "mean": 0.20833333333333334,
+          "stdev": 0.0041633319989322695,
+          "min": 0.205,
+          "max": 0.213,
+          "runs_observed": 3
+        },
+        "sharpen": {
+          "mean": 0.04666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.046,
+          "max": 0.047,
+          "runs_observed": 3
+        },
+        "rgb_conversion": {
+          "mean": 0.06733333333333334,
+          "stdev": 0.003214550253664313,
+          "min": 0.065,
+          "max": 0.071,
+          "runs_observed": 3
+        },
+        "gamma_correction": {
+          "mean": 0.013333333333333334,
+          "stdev": 0.0005773502691896262,
+          "min": 0.013,
+          "max": 0.014,
+          "runs_observed": 3
+        }
+      }
+    }
+  },
+  "ldci_enabled": {
+    "focus_block": "ldci",
+    "runs": [
+      {
+        "wall_time_seconds": 4.518052190000162,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.223,
+          "black_level_correction": 0.012,
+          "companding": 0.012,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.051,
+          "bayer_noise_reduction": 1.825,
+          "auto_white_balance": 0.11,
+          "white_balance": 0.009,
+          "tone_mapping": 0.174,
+          "demosaic": 0.36,
+          "color_correction_matrix": 0.027,
+          "auto_exposure": 0.152,
+          "color_space_conversion": 0.237,
+          "ldci": 0.059,
+          "sharpen": 0.063,
+          "rgb_conversion": 0.118,
+          "gamma_correction": 0.014
+        }
+      },
+      {
+        "wall_time_seconds": 4.564776973999869,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.226,
+          "black_level_correction": 0.011,
+          "companding": 0.013,
+          "digital_gain": 0.007,
+          "lens_shading_correction": 0.051,
+          "bayer_noise_reduction": 1.837,
+          "auto_white_balance": 0.11,
+          "white_balance": 0.008,
+          "tone_mapping": 0.176,
+          "demosaic": 0.358,
+          "color_correction_matrix": 0.023,
+          "auto_exposure": 0.148,
+          "color_space_conversion": 0.244,
+          "ldci": 0.061,
+          "sharpen": 0.049,
+          "rgb_conversion": 0.16,
+          "gamma_correction": 0.014
+        }
+      },
+      {
+        "wall_time_seconds": 4.515813681000509,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.216,
+          "black_level_correction": 0.012,
+          "companding": 0.013,
+          "digital_gain": 0.007,
+          "lens_shading_correction": 0.05,
+          "bayer_noise_reduction": 1.815,
+          "auto_white_balance": 0.109,
+          "white_balance": 0.009,
+          "tone_mapping": 0.174,
+          "demosaic": 0.36,
+          "color_correction_matrix": 0.023,
+          "auto_exposure": 0.149,
+          "color_space_conversion": 0.236,
+          "ldci": 0.06,
+          "sharpen": 0.048,
+          "rgb_conversion": 0.155,
+          "gamma_correction": 0.014
+        }
+      }
+    ],
+    "summary": {
+      "wall_time_seconds": {
+        "mean": 4.5328809483335135,
+        "stdev": 0.027645434896506976,
+        "min": 4.515813681000509,
+        "max": 4.564776973999869
+      },
+      "blocks": {
+        "dead_pixel_correction": {
+          "mean": 1.2216666666666667,
+          "stdev": 0.005131601439446903,
+          "min": 1.216,
+          "max": 1.226,
+          "runs_observed": 3
+        },
+        "black_level_correction": {
+          "mean": 0.011666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.011,
+          "max": 0.012,
+          "runs_observed": 3
+        },
+        "companding": {
+          "mean": 0.012666666666666666,
+          "stdev": 0.0005773502691896253,
+          "min": 0.012,
+          "max": 0.013,
+          "runs_observed": 3
+        },
+        "digital_gain": {
+          "mean": 0.007333333333333333,
+          "stdev": 0.0005773502691896258,
+          "min": 0.007,
+          "max": 0.008,
+          "runs_observed": 3
+        },
+        "lens_shading_correction": {
+          "mean": 0.050666666666666665,
+          "stdev": 0.0005773502691896222,
+          "min": 0.05,
+          "max": 0.051,
+          "runs_observed": 3
+        },
+        "bayer_noise_reduction": {
+          "mean": 1.8256666666666668,
+          "stdev": 0.011015141094572214,
+          "min": 1.815,
+          "max": 1.837,
+          "runs_observed": 3
+        },
+        "auto_white_balance": {
+          "mean": 0.10966666666666668,
+          "stdev": 0.0005773502691896262,
+          "min": 0.109,
+          "max": 0.11,
+          "runs_observed": 3
+        },
+        "white_balance": {
+          "mean": 0.008666666666666666,
+          "stdev": 0.0005773502691896253,
+          "min": 0.008,
+          "max": 0.009,
+          "runs_observed": 3
+        },
+        "tone_mapping": {
+          "mean": 0.17466666666666666,
+          "stdev": 0.0011547005383792525,
+          "min": 0.174,
+          "max": 0.176,
+          "runs_observed": 3
+        },
+        "demosaic": {
+          "mean": 0.3593333333333333,
+          "stdev": 0.0011547005383792525,
+          "min": 0.358,
+          "max": 0.36,
+          "runs_observed": 3
+        },
+        "color_correction_matrix": {
+          "mean": 0.024333333333333332,
+          "stdev": 0.002309401076758503,
+          "min": 0.023,
+          "max": 0.027,
+          "runs_observed": 3
+        },
+        "auto_exposure": {
+          "mean": 0.14966666666666664,
+          "stdev": 0.0020816659994661348,
+          "min": 0.148,
+          "max": 0.152,
+          "runs_observed": 3
+        },
+        "color_space_conversion": {
+          "mean": 0.239,
+          "stdev": 0.004358898943540678,
+          "min": 0.236,
+          "max": 0.244,
+          "runs_observed": 3
+        },
+        "ldci": {
+          "mean": 0.06,
+          "stdev": 0.0010000000000000009,
+          "min": 0.059,
+          "max": 0.061,
+          "runs_observed": 3
+        },
+        "sharpen": {
+          "mean": 0.05333333333333334,
+          "stdev": 0.008386497083606082,
+          "min": 0.048,
+          "max": 0.063,
+          "runs_observed": 3
+        },
+        "rgb_conversion": {
+          "mean": 0.14433333333333334,
+          "stdev": 0.022941955743426355,
+          "min": 0.118,
+          "max": 0.16,
+          "runs_observed": 3
+        },
+        "gamma_correction": {
+          "mean": 0.014,
+          "stdev": 0.0,
+          "min": 0.014,
+          "max": 0.014,
+          "runs_observed": 3
+        }
+      }
+    }
+  },
+  "2d_noise_reduction_enabled": {
+    "focus_block": "2d_noise_reduction",
+    "runs": [
+      {
+        "wall_time_seconds": 12.169385651000084,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.227,
+          "black_level_correction": 0.011,
+          "companding": 0.013,
+          "digital_gain": 0.007,
+          "lens_shading_correction": 0.052,
+          "bayer_noise_reduction": 1.809,
+          "auto_white_balance": 0.111,
+          "white_balance": 0.008,
+          "tone_mapping": 0.175,
+          "demosaic": 0.358,
+          "color_correction_matrix": 0.025,
+          "auto_exposure": 0.149,
+          "color_space_conversion": 0.245,
+          "sharpen": 0.046,
+          "2d_noise_reduction": 7.699,
+          "rgb_conversion": 0.154,
+          "gamma_correction": 0.014
+        }
+      },
+      {
+        "wall_time_seconds": 12.47554172799937,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.235,
+          "black_level_correction": 0.01,
+          "companding": 0.012,
+          "digital_gain": 0.011,
+          "lens_shading_correction": 0.062,
+          "bayer_noise_reduction": 1.854,
+          "auto_white_balance": 0.111,
+          "white_balance": 0.008,
+          "tone_mapping": 0.177,
+          "demosaic": 0.362,
+          "color_correction_matrix": 0.027,
+          "auto_exposure": 0.149,
+          "color_space_conversion": 0.246,
+          "sharpen": 0.047,
+          "2d_noise_reduction": 7.916,
+          "rgb_conversion": 0.156,
+          "gamma_correction": 0.014
+        }
+      },
+      {
+        "wall_time_seconds": 12.180340077000437,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.227,
+          "black_level_correction": 0.012,
+          "companding": 0.013,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.052,
+          "bayer_noise_reduction": 1.894,
+          "auto_white_balance": 0.114,
+          "white_balance": 0.007,
+          "tone_mapping": 0.176,
+          "demosaic": 0.362,
+          "color_correction_matrix": 0.023,
+          "auto_exposure": 0.149,
+          "color_space_conversion": 0.242,
+          "sharpen": 0.047,
+          "2d_noise_reduction": 7.618,
+          "rgb_conversion": 0.156,
+          "gamma_correction": 0.013
+        }
+      }
+    ],
+    "summary": {
+      "wall_time_seconds": {
+        "mean": 12.275089151999964,
+        "stdev": 0.17368340819101788,
+        "min": 12.169385651000084,
+        "max": 12.47554172799937
+      },
+      "blocks": {
+        "dead_pixel_correction": {
+          "mean": 1.2296666666666667,
+          "stdev": 0.00461880215351701,
+          "min": 1.227,
+          "max": 1.235,
+          "runs_observed": 3
+        },
+        "black_level_correction": {
+          "mean": 0.011000000000000001,
+          "stdev": 0.001,
+          "min": 0.01,
+          "max": 0.012,
+          "runs_observed": 3
+        },
+        "companding": {
+          "mean": 0.012666666666666666,
+          "stdev": 0.0005773502691896253,
+          "min": 0.012,
+          "max": 0.013,
+          "runs_observed": 3
+        },
+        "digital_gain": {
+          "mean": 0.008666666666666666,
+          "stdev": 0.002081665999466132,
+          "min": 0.007,
+          "max": 0.011,
+          "runs_observed": 3
+        },
+        "lens_shading_correction": {
+          "mean": 0.055333333333333325,
+          "stdev": 0.005773502691896259,
+          "min": 0.052,
+          "max": 0.062,
+          "runs_observed": 3
+        },
+        "bayer_noise_reduction": {
+          "mean": 1.8523333333333334,
+          "stdev": 0.0425245027405769,
+          "min": 1.809,
+          "max": 1.894,
+          "runs_observed": 3
+        },
+        "auto_white_balance": {
+          "mean": 0.112,
+          "stdev": 0.001732050807568879,
+          "min": 0.111,
+          "max": 0.114,
+          "runs_observed": 3
+        },
+        "white_balance": {
+          "mean": 0.007666666666666666,
+          "stdev": 0.0005773502691896258,
+          "min": 0.007,
+          "max": 0.008,
+          "runs_observed": 3
+        },
+        "tone_mapping": {
+          "mean": 0.17600000000000002,
+          "stdev": 0.0010000000000000009,
+          "min": 0.175,
+          "max": 0.177,
+          "runs_observed": 3
+        },
+        "demosaic": {
+          "mean": 0.36066666666666664,
+          "stdev": 0.002309401076758505,
+          "min": 0.358,
+          "max": 0.362,
+          "runs_observed": 3
+        },
+        "color_correction_matrix": {
+          "mean": 0.024999999999999998,
+          "stdev": 0.002,
+          "min": 0.023,
+          "max": 0.027,
+          "runs_observed": 3
+        },
+        "auto_exposure": {
+          "mean": 0.149,
+          "stdev": 0.0,
+          "min": 0.149,
+          "max": 0.149,
+          "runs_observed": 3
+        },
+        "color_space_conversion": {
+          "mean": 0.24433333333333332,
+          "stdev": 0.0020816659994661348,
+          "min": 0.242,
+          "max": 0.246,
+          "runs_observed": 3
+        },
+        "sharpen": {
+          "mean": 0.04666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.046,
+          "max": 0.047,
+          "runs_observed": 3
+        },
+        "2d_noise_reduction": {
+          "mean": 7.7443333333333335,
+          "stdev": 0.1540854741152889,
+          "min": 7.618,
+          "max": 7.916,
+          "runs_observed": 3
+        },
+        "rgb_conversion": {
+          "mean": 0.15533333333333332,
+          "stdev": 0.0011547005383792525,
+          "min": 0.154,
+          "max": 0.156,
+          "runs_observed": 3
+        },
+        "gamma_correction": {
+          "mean": 0.013666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.013,
+          "max": 0.014,
+          "runs_observed": 3
+        }
+      }
+    }
+  },
+  "scale_enabled": {
+    "focus_block": "scale",
+    "runs": [
+      {
+        "wall_time_seconds": 4.542661645999942,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.227,
+          "black_level_correction": 0.01,
+          "companding": 0.013,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.052,
+          "bayer_noise_reduction": 1.938,
+          "auto_white_balance": 0.11,
+          "white_balance": 0.009,
+          "tone_mapping": 0.177,
+          "demosaic": 0.363,
+          "color_correction_matrix": 0.025,
+          "auto_exposure": 0.15,
+          "color_space_conversion": 0.241,
+          "sharpen": 0.046,
+          "rgb_conversion": 0.069,
+          "gamma_correction": 0.014,
+          "scale": 0.011
+        }
+      },
+      {
+        "wall_time_seconds": 4.560083941999437,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.254,
+          "black_level_correction": 0.012,
+          "companding": 0.013,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.054,
+          "bayer_noise_reduction": 1.891,
+          "auto_white_balance": 0.113,
+          "white_balance": 0.008,
+          "tone_mapping": 0.177,
+          "demosaic": 0.374,
+          "color_correction_matrix": 0.029,
+          "auto_exposure": 0.15,
+          "color_space_conversion": 0.241,
+          "sharpen": 0.047,
+          "rgb_conversion": 0.068,
+          "gamma_correction": 0.014,
+          "scale": 0.011
+        }
+      },
+      {
+        "wall_time_seconds": 4.529527732000133,
+        "block_timings_seconds": {
+          "dead_pixel_correction": 1.241,
+          "black_level_correction": 0.013,
+          "companding": 0.013,
+          "digital_gain": 0.008,
+          "lens_shading_correction": 0.054,
+          "bayer_noise_reduction": 1.856,
+          "auto_white_balance": 0.115,
+          "white_balance": 0.009,
+          "tone_mapping": 0.202,
+          "demosaic": 0.363,
+          "color_correction_matrix": 0.029,
+          "auto_exposure": 0.15,
+          "color_space_conversion": 0.255,
+          "sharpen": 0.047,
+          "rgb_conversion": 0.071,
+          "gamma_correction": 0.013,
+          "scale": 0.012
+        }
+      }
+    ],
+    "summary": {
+      "wall_time_seconds": {
+        "mean": 4.544091106666504,
+        "stdev": 0.015328177019082435,
+        "min": 4.529527732000133,
+        "max": 4.560083941999437
+      },
+      "blocks": {
+        "dead_pixel_correction": {
+          "mean": 1.2406666666666668,
+          "stdev": 0.013503086067019353,
+          "min": 1.227,
+          "max": 1.254,
+          "runs_observed": 3
+        },
+        "black_level_correction": {
+          "mean": 0.011666666666666667,
+          "stdev": 0.0015275252316519464,
+          "min": 0.01,
+          "max": 0.013,
+          "runs_observed": 3
+        },
+        "companding": {
+          "mean": 0.013,
+          "stdev": 0.0,
+          "min": 0.013,
+          "max": 0.013,
+          "runs_observed": 3
+        },
+        "digital_gain": {
+          "mean": 0.008,
+          "stdev": 0.0,
+          "min": 0.008,
+          "max": 0.008,
+          "runs_observed": 3
+        },
+        "lens_shading_correction": {
+          "mean": 0.05333333333333334,
+          "stdev": 0.0011547005383792525,
+          "min": 0.052,
+          "max": 0.054,
+          "runs_observed": 3
+        },
+        "bayer_noise_reduction": {
+          "mean": 1.8950000000000002,
+          "stdev": 0.041146081222881895,
+          "min": 1.856,
+          "max": 1.938,
+          "runs_observed": 3
+        },
+        "auto_white_balance": {
+          "mean": 0.11266666666666668,
+          "stdev": 0.0025166114784235857,
+          "min": 0.11,
+          "max": 0.115,
+          "runs_observed": 3
+        },
+        "white_balance": {
+          "mean": 0.008666666666666666,
+          "stdev": 0.0005773502691896253,
+          "min": 0.008,
+          "max": 0.009,
+          "runs_observed": 3
+        },
+        "tone_mapping": {
+          "mean": 0.18533333333333335,
+          "stdev": 0.014433756729740658,
+          "min": 0.177,
+          "max": 0.202,
+          "runs_observed": 3
+        },
+        "demosaic": {
+          "mean": 0.3666666666666667,
+          "stdev": 0.006350852961085889,
+          "min": 0.363,
+          "max": 0.374,
+          "runs_observed": 3
+        },
+        "color_correction_matrix": {
+          "mean": 0.02766666666666667,
+          "stdev": 0.002309401076758503,
+          "min": 0.025,
+          "max": 0.029,
+          "runs_observed": 3
+        },
+        "auto_exposure": {
+          "mean": 0.15,
+          "stdev": 0.0,
+          "min": 0.15,
+          "max": 0.15,
+          "runs_observed": 3
+        },
+        "color_space_conversion": {
+          "mean": 0.24566666666666667,
+          "stdev": 0.008082903768654767,
+          "min": 0.241,
+          "max": 0.255,
+          "runs_observed": 3
+        },
+        "sharpen": {
+          "mean": 0.04666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.046,
+          "max": 0.047,
+          "runs_observed": 3
+        },
+        "rgb_conversion": {
+          "mean": 0.06933333333333334,
+          "stdev": 0.0015275252316519405,
+          "min": 0.068,
+          "max": 0.071,
+          "runs_observed": 3
+        },
+        "gamma_correction": {
+          "mean": 0.013666666666666667,
+          "stdev": 0.0005773502691896262,
+          "min": 0.013,
+          "max": 0.014,
+          "runs_observed": 3
+        },
+        "scale": {
+          "mean": 0.011333333333333334,
+          "stdev": 0.0005773502691896262,
+          "min": 0.011,
+          "max": 0.012,
+          "runs_observed": 3
+        }
+      }
+    }
+  }
+}

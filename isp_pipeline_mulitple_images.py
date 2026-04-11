@@ -5,6 +5,7 @@ It also fetches if a separate config of a raw image is present othewise uses the
 import logging
 import os
 from pathlib import Path
+
 from tqdm import tqdm
 from brilliant_isp import BrilliantISP
 
@@ -55,7 +56,7 @@ EXTRACT_SENSOR_INFO = True
 UPDATE_BLC_WB = True
 
 
-def video_processing(input_path, output_path):
+def video_processing(input_path: str, output_path: str) -> None:
     """
     Processed Images in a folder [input_path] like frames of an Image.
     - All images are processed with same config file located at CONFIG_PATH
@@ -69,7 +70,8 @@ def video_processing(input_path, output_path):
     _log.info(f"Input directory: {input_path}")
     _log.info(f"Output directory: {output_path}")
 
-    brilliant_isp = BrilliantISP(DATASET_PATH, CONFIG_PATH, OUTPUT_PATH)
+    brilliant_isp = BrilliantISP(input_path, CONFIG_PATH, output_path)
+    assert brilliant_isp.c_yaml is not None
 
     # set generate_tv flag to false
     brilliant_isp.c_yaml["platform"]["generate_tv"] = False
@@ -81,7 +83,7 @@ def video_processing(input_path, output_path):
         brilliant_isp.load_3a_statistics()
 
 
-def dataset_processing(input_path, output_path):
+def dataset_processing(input_path: str, output_path: str) -> None:
     """
     Processed each image as a single entity that may or may not have its config
     - If config file in the dataset folder has format filename-configs.yml it will
@@ -102,7 +104,8 @@ def dataset_processing(input_path, output_path):
         if (Path(input_path, x).suffix in [".raw", ".NEF", ".dng", ".nef"])
     ]
 
-    brilliant_isp = BrilliantISP(DATASET_PATH, default_config, OUTPUT_PATH)
+    brilliant_isp = BrilliantISP(input_path, default_config, output_path)
+    assert brilliant_isp.c_yaml is not None
 
     # set generate_tv flag to false
     brilliant_isp.c_yaml["platform"]["generate_tv"] = False
@@ -124,7 +127,7 @@ def dataset_processing(input_path, output_path):
             _log.info(f"Found {config_file}.")
 
             # use raw config file in dataset
-            brilliant_isp.load_config(DATASET_PATH + config_file)
+            brilliant_isp.load_config(str(Path(input_path, config_file)))
             is_default_config = False
             brilliant_isp.execute()
 
@@ -161,7 +164,7 @@ def dataset_processing(input_path, output_path):
             brilliant_isp.execute(raw)
 
 
-def find_files(filename, search_path):
+def find_files(filename: str, search_path: str) -> bool:
     """
     This function is used to find the files in the search_path
     """
@@ -171,7 +174,7 @@ def find_files(filename, search_path):
     return False
 
 
-def process_multiple_folders():
+def process_multiple_folders() -> None:
     """
     Process multiple input folders with corresponding output folders
     """

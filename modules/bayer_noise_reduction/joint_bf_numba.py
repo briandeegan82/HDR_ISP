@@ -9,6 +9,8 @@ import numpy as np
 from numba import jit, prange
 import time
 
+from util.isp_types import BayerNoiseReductionConfig, PlatformConfig, RawBayerImage, SensorInfo
+
 # Try to import Numba, fall back to CPU if not available
 try:
     from numba import jit, prange
@@ -23,7 +25,13 @@ class JointBFNumba:
     Numba-optimized joint bilateral filter for Bayer noise reduction
     """
 
-    def __init__(self, img, sensor_info, parm_bnr, platform):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        sensor_info: SensorInfo,
+        parm_bnr: BayerNoiseReductionConfig,
+        platform: PlatformConfig,
+    ) -> None:
         self.img = img
         self.sensor_info = sensor_info
         self.parm_bnr = parm_bnr
@@ -36,7 +44,7 @@ class JointBFNumba:
         else:
             self._log.info("  Using CPU joint bilateral filter")
 
-    def _should_use_numba(self):
+    def _should_use_numba(self) -> bool:
         """Determine if Numba optimization should be used based on image size."""
         if not NUMBA_AVAILABLE:
             return False
@@ -47,8 +55,15 @@ class JointBFNumba:
 
     @staticmethod
     @jit(nopython=True, parallel=True)
-    def fast_joint_bilateral_filter_numba(input_array, guide_array, spatial_kernel, 
-                                         spatial_sigma, range_sigma, height, width):
+    def fast_joint_bilateral_filter_numba(
+        input_array: np.ndarray,
+        guide_array: np.ndarray,
+        spatial_kernel: np.ndarray,
+        spatial_sigma: float,
+        range_sigma: float,
+        height: int,
+        width: int,
+    ) -> np.ndarray:
         """
         Numba-optimized joint bilateral filter implementation
         """
@@ -91,7 +106,7 @@ class JointBFNumba:
 
     @staticmethod
     @jit(nopython=True)
-    def create_gaussian_kernel_numba(size, sigma):
+    def create_gaussian_kernel_numba(size: int, sigma: float) -> np.ndarray:
         """
         Numba-optimized Gaussian kernel creation
         """
@@ -113,7 +128,7 @@ class JointBFNumba:
         
         return kernel
 
-    def apply_jbf_numba(self):
+    def apply_jbf_numba(self) -> RawBayerImage:
         """
         Apply Numba-optimized joint bilateral filter
         """
@@ -144,7 +159,7 @@ class JointBFNumba:
         
         return result.astype(np.uint32)
 
-    def apply_jbf_cpu(self):
+    def apply_jbf_cpu(self) -> RawBayerImage:
         """
         CPU fallback implementation
         """
@@ -152,7 +167,7 @@ class JointBFNumba:
         # In practice, you'd implement the original algorithm here
         return self.img.astype(np.uint32)
 
-    def apply_jbf(self):
+    def apply_jbf(self) -> RawBayerImage:
         """
         Apply joint bilateral filter with Numba optimization
         """

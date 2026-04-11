@@ -7,13 +7,14 @@ Based on ACES 1.0 RRT (Knarkowicz 2016 fitted) + sRGB ODT.
 """
 import numpy as np
 from util.debug_utils import get_debug_logger
+from util.isp_types import PlatformConfig, SensorInfo, ToneMappingParams, UInt16Image
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 
 
-def _build_aces_rrt_lut(size=65536, hdr_scale=100.0):
+def _build_aces_rrt_lut(size: int = 65536, hdr_scale: float = 100.0) -> UInt16Image:
     """
     Build ACES RRT (filmic) tone curve LUT.
     Formula: (x * (a*x + b)) / (x * (c*x + d) + e), Knarkowicz 2016.
@@ -27,7 +28,7 @@ def _build_aces_rrt_lut(size=65536, hdr_scale=100.0):
     return np.clip(np.round(out * 65535), 0, 65535).astype(np.uint16)
 
 
-def _build_srgb_gamma_lut(size=65536, gamma=2.4):
+def _build_srgb_gamma_lut(size: int = 65536, gamma: float = 2.4) -> UInt16Image:
     """
     Build sRGB gamma LUT (linear to display).
     Linear segment: x <= 0.0031308 -> 12.92 * x
@@ -51,7 +52,13 @@ class ACESIntegerToneMapping:
     _rrt_lut_cache = {}
     _srgb_lut_cache = {}
 
-    def __init__(self, img, platform, sensor_info, params):
+    def __init__(
+        self,
+        img: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        params: ToneMappingParams,
+    ) -> None:
         self.img = np.asarray(img, dtype=np.uint32)
         self.platform = platform
         self.sensor_info = sensor_info
@@ -95,7 +102,7 @@ class ACESIntegerToneMapping:
             else:
                 self.output_scale = 1.0
 
-    def _build_luts(self):
+    def _build_luts(self) -> None:
         """Build or retrieve cached LUTs."""
         gamma_key = (self.lut_size, self.gamma)
         if gamma_key not in self._srgb_lut_cache:
@@ -160,7 +167,7 @@ class ACESIntegerToneMapping:
 
         return out.astype(np.uint16)
 
-    def plot_tone_curve(self):
+    def plot_tone_curve(self) -> None:
         """Plot and save the ACES integer tone mapping curve."""
         if not self.is_plot_curve:
             return
@@ -234,7 +241,7 @@ class ACESIntegerToneMapping:
         except Exception as e:
             self.logger.warning(f"  Failed to plot tone curve: {e}")
 
-    def execute(self) -> np.ndarray:
+    def execute(self) -> UInt16Image:
         """Execute ACES integer tone mapping. Returns uint16."""
         if not self.is_enable:
             scale = self.output_max / max(1, self.input_max)

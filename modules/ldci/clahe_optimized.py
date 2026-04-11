@@ -7,8 +7,11 @@ Author: 10xEngineers
 """
 import logging
 import math
+from typing import Any, cast
 import numpy as np
 import cv2
+
+from util.isp_types import LDCIConfig, PlatformConfig, SensorInfo
 
 # Import GPU utilities with fallback
 try:
@@ -20,22 +23,30 @@ try:
 except ImportError:
     GPU_UTILS_AVAILABLE = False
     # Fallback functions for CPU-only systems
-    def is_gpu_available():
+    def is_gpu_available() -> bool:
         return False
     
-    def should_use_gpu(img_size, operation):
+    def should_use_gpu(img_size: tuple[int, int], operation: str) -> bool:
         return False
     
-    def gpu_filter2d(img, kernel, use_gpu=True):
+    def gpu_filter2d(
+        img: np.ndarray, kernel: np.ndarray, use_gpu: bool = True
+    ) -> np.ndarray:
         return cv2.filter2D(img, -1, kernel)
     
-    def gpu_gaussian_blur(img, ksize, sigma_x, sigma_y=0, use_gpu=True):
-        return cv2.GaussianBlur(img, ksize, sigma_x, sigma_y)
+    def gpu_gaussian_blur(
+        img: np.ndarray,
+        ksize: tuple[int, int],
+        sigma_x: float,
+        sigma_y: float = 0,
+        use_gpu: bool = True,
+    ) -> np.ndarray:
+        return cv2.GaussianBlur(img, ksize, sigma_x, sigmaY=sigma_y)
     
-    def to_umat(img, use_gpu=True):
+    def to_umat(img: np.ndarray, use_gpu: bool = True) -> np.ndarray:
         return img
     
-    def from_umat(umat_or_array):
+    def from_umat(umat_or_array: np.ndarray) -> np.ndarray:
         return umat_or_array
 
 
@@ -44,7 +55,13 @@ class CLAHEOptimized:
     Optimized CLAHE implementation with NumPy broadcast operations
     """
 
-    def __init__(self, yuv, platform, sensor_info, parm_ldci):
+    def __init__(
+        self,
+        yuv: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_ldci: LDCIConfig,
+    ) -> None:
         self.yuv = yuv
         self.img = yuv
         self.enable = parm_ldci["is_enable"]
@@ -63,7 +80,12 @@ class CLAHEOptimized:
         else:
             self._log.info("  Using CPU implementation for CLAHE")
 
-    def pad_array(self, array, pads, mode="reflect"):
+    def pad_array(
+        self,
+        array: np.ndarray,
+        pads: Any,
+        mode: str = "reflect",
+    ) -> np.ndarray:
         """
         Optimized array padding using NumPy
         """
@@ -79,9 +101,11 @@ class CLAHEOptimized:
             else:
                 raise NotImplementedError
 
-        return np.pad(array, pads, mode)
+        return np.pad(array, cast(Any, pads), mode=cast(Any, mode))
 
-    def crop(self, array, crops):
+    def crop(
+        self, array: np.ndarray, crops: int | tuple[int, ...] | list[int] | np.ndarray
+    ) -> np.ndarray:
         """
         Optimized array cropping using NumPy
         """
@@ -101,7 +125,7 @@ class CLAHEOptimized:
             top_crop : height - bottom_crop, left_crop : width - right_crop, ...
         ]
 
-    def get_tile_lut_optimized(self, tiled_array):
+    def get_tile_lut_optimized(self, tiled_array: np.ndarray) -> np.ndarray:
         """
         Optimized LUT generation using vectorized operations
         """
@@ -127,7 +151,13 @@ class CLAHEOptimized:
 
         return look_up_table
 
-    def interp_blocks_optimized(self, weights, block, first_block_lut, second_block_lut):
+    def interp_blocks_optimized(
+        self,
+        weights: np.ndarray,
+        block: np.ndarray,
+        first_block_lut: np.ndarray,
+        second_block_lut: np.ndarray,
+    ) -> np.ndarray:
         """
         Optimized block interpolation using NumPy broadcast
         """
@@ -138,19 +168,40 @@ class CLAHEOptimized:
         # OPTIMIZATION: Use vectorized bit shifting
         return np.right_shift(first + second, 10).astype(np.uint8)
 
-    def interp_top_bottom_block_optimized(self, left_lut_weights, block, left_lut, current_lut):
+    def interp_top_bottom_block_optimized(
+        self,
+        left_lut_weights: np.ndarray,
+        block: np.ndarray,
+        left_lut: np.ndarray,
+        current_lut: np.ndarray,
+    ) -> np.ndarray:
         """
         Optimized top/bottom block interpolation
         """
         return self.interp_blocks_optimized(left_lut_weights, block, left_lut, current_lut)
 
-    def interp_left_right_block_optimized(self, top_lut_weights, block, top_lut, current_lut):
+    def interp_left_right_block_optimized(
+        self,
+        top_lut_weights: np.ndarray,
+        block: np.ndarray,
+        top_lut: np.ndarray,
+        current_lut: np.ndarray,
+    ) -> np.ndarray:
         """
         Optimized left/right block interpolation
         """
         return self.interp_blocks_optimized(top_lut_weights, block, top_lut, current_lut)
 
-    def interp_neighbor_block_optimized(self, left_lut_weights, top_lut_weights, block, tl_lut, top_lut, left_lut, current_lut):
+    def interp_neighbor_block_optimized(
+        self,
+        left_lut_weights: np.ndarray,
+        top_lut_weights: np.ndarray,
+        block: np.ndarray,
+        tl_lut: np.ndarray,
+        top_lut: np.ndarray,
+        left_lut: np.ndarray,
+        current_lut: np.ndarray,
+    ) -> np.ndarray:
         """
         Optimized neighbor block interpolation using NumPy broadcast
         """
@@ -165,31 +216,39 @@ class CLAHEOptimized:
         ).astype(np.uint8)
         return interp_final
 
-    def is_corner_block(self, horiz_tiles, vert_tiles, i_col, i_row):
+    def is_corner_block(
+        self, horiz_tiles: int, vert_tiles: int, i_col: int, i_row: int
+    ) -> bool:
         """
         Check if block is at corner
         """
         return (i_col == 0 or i_col == horiz_tiles) and (i_row == 0 or i_row == vert_tiles)
 
-    def is_top_or_bottom_block(self, horiz_tiles, vert_tiles, i_col, i_row):
+    def is_top_or_bottom_block(
+        self, horiz_tiles: int, vert_tiles: int, i_col: int, i_row: int
+    ) -> bool:
         """
         Check if block is at top or bottom
         """
         return (i_row == 0 or i_row == vert_tiles) and (i_col > 0 and i_col < horiz_tiles)
 
-    def is_left_or_right_block(self, horiz_tiles, vert_tiles, i_col, i_row):
+    def is_left_or_right_block(
+        self, horiz_tiles: int, vert_tiles: int, i_col: int, i_row: int
+    ) -> bool:
         """
         Check if block is at left or right
         """
         return (i_col == 0 or i_col == horiz_tiles) and (i_row > 0 and i_row < vert_tiles)
 
-    def is_neighbor_block(self, horiz_tiles, vert_tiles, i_col, i_row):
+    def is_neighbor_block(
+        self, horiz_tiles: int, vert_tiles: int, i_col: int, i_row: int
+    ) -> bool:
         """
         Check if block is a neighbor block
         """
         return (i_col > 0 and i_col < horiz_tiles) and (i_row > 0 and i_row < vert_tiles)
 
-    def apply_clahe_optimized(self):
+    def apply_clahe_optimized(self) -> np.ndarray:
         """
         Optimized CLAHE algorithm using NumPy broadcast operations
         """
@@ -322,7 +381,13 @@ class CLAHEOptimized:
                     ] = (
                         (
                             self.interp_neighbor_block_optimized(
-                                left_lut_weights, top_lut_weights, y_block, top_lut, left_lut, current_lut
+                                left_lut_weights,
+                                top_lut_weights,
+                                y_block,
+                                top_lut,
+                                left_lut,
+                                current_lut,
+                                right_lut,
                             )
                         )
                     ).astype(np.float32)
@@ -335,7 +400,7 @@ class CLAHEOptimized:
 
         return self.img
 
-    def apply_clahe(self):
+    def apply_clahe(self) -> np.ndarray:
         """
         Main method - apply optimized CLAHE
         """

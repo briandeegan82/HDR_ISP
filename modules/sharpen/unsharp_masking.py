@@ -13,12 +13,14 @@ class UnsharpMasking:
     Implements Unsharp Masking Algorithm
     """
 
-    def __init__(self, img, sharpen_sigma, sharpen_strength):
+    def __init__(
+        self, img: np.ndarray, sharpen_sigma: float, sharpen_strength: float
+    ) -> None:
         self.img = img
         self.sharpen_sigma = sharpen_sigma
         self.sharpen_strength = sharpen_strength
 
-    def apply_sharpen(self):
+    def apply_sharpen(self) -> np.ndarray:
         """
         Applying sharpening to the input image
         """

@@ -16,6 +16,7 @@ Code / Paper  Reference: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conver
 import time
 import numpy as np
 
+from util.isp_types import ColorSaturationEnhancementConfig, ColorSpaceConversionConfig, PlatformConfig, SensorInfo, UInt8Image
 from util.utils import save_output_array_yuv
 
 
@@ -24,7 +25,14 @@ class ColorSpaceConversion:
     Color Space Conversion
     """
 
-    def __init__(self, img, platform, sensor_info, parm_csc, parm_cse):
+    def __init__(
+        self,
+        img: UInt8Image,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_csc: ColorSpaceConversionConfig,
+        parm_cse: ColorSaturationEnhancementConfig,
+    ) -> None:
         self.img = img.copy()
         self.is_save = parm_csc["is_save"]
         self.platform = platform
@@ -38,7 +46,7 @@ class ColorSpaceConversion:
         # Initialize debug logger
         self.logger = get_debug_logger("ColorSpaceConversion", config=self.platform)
 
-    def rgb_to_yuv_8bit(self):
+    def rgb_to_yuv_8bit(self) -> UInt8Image:
         """
         RGB-to-YUV Colorspace conversion 8bit
         """
@@ -100,7 +108,7 @@ class ColorSpaceConversion:
         self.img = yuv2d_t.reshape(self.img.shape).astype(np.uint8)
         return self.img
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -113,7 +121,7 @@ class ColorSpaceConversion:
                 self.conv_std,
             )
 
-    def execute(self):
+    def execute(self) -> UInt8Image:
         """
         Execute Color Space Conversion
         """

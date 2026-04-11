@@ -8,6 +8,7 @@ Author: 10xEngineers Pvt Ltd
 import time
 import numpy as np
 
+from util.isp_types import BlackLevelCorrectionConfig, PlatformConfig, RawBayerImage, SensorInfo, UInt32Image
 from util.utils import save_output_array
 from util.debug_utils import get_debug_logger
 
@@ -17,7 +18,13 @@ class BlackLevelCorrection:
     Black Level Correction
     """
 
-    def __init__(self, img, platform, sensor_info, parm_blc):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_blc: BlackLevelCorrectionConfig,
+    ) -> None:
         self.img = img
         self.enable = parm_blc["is_enable"]
         self.sensor_info = sensor_info
@@ -28,7 +35,7 @@ class BlackLevelCorrection:
         # Initialize debug logger
         self.logger = get_debug_logger("BlackLevelCorrection", config=self.platform)
 
-    def apply_blc_parameters(self):
+    def apply_blc_parameters(self) -> UInt32Image:
         """
         Apply BLC parameters provided in config file
         """
@@ -46,7 +53,7 @@ class BlackLevelCorrection:
         gb_sat = self.param_blc["gb_sat"]
         b_sat = self.param_blc["b_sat"]
 
-        raw = np.float32(self.img)
+        raw = self.img.astype(np.float32)
 
         if bayer == "rggb":
 
@@ -132,10 +139,10 @@ class BlackLevelCorrection:
                     raw[1::2, 1::2] / (gr_sat - gr_offset) * ((2**bpp) - 1)
                 )
 
-        raw_blc = np.uint32(np.clip(raw, 0, (2**bpp) - 1))
+        raw_blc = np.clip(raw, 0, (2**bpp) - 1).astype(np.uint32)
         return raw_blc
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -149,7 +156,7 @@ class BlackLevelCorrection:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> RawBayerImage | UInt32Image:
         """
         Black Level Correction
         """

@@ -9,6 +9,7 @@ Author: 10xEngineers
 
 import time
 from modules.bayer_noise_reduction.joint_bf import JointBF as JBF
+from util.isp_types import BayerNoiseReductionConfig, PlatformConfig, RawBayerImage, SensorInfo
 from util.utils import save_output_array
 
 # Try to import GPU-accelerated version
@@ -23,7 +24,13 @@ class BayerNoiseReduction:
     Noise Reduction in Bayer domain. Uses GPU if available, else CPU.
     """
 
-    def __init__(self, img, sensor_info, parm_bnr, platform):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        sensor_info: SensorInfo,
+        parm_bnr: BayerNoiseReductionConfig,
+        platform: PlatformConfig,
+    ) -> None:
         self.img = img
         self.enable = parm_bnr["is_enable"]
         self.sensor_info = sensor_info
@@ -46,7 +53,7 @@ class BayerNoiseReduction:
             except ImportError:
                 self.use_gpu = False
 
-    def apply_bnr(self):
+    def apply_bnr(self) -> RawBayerImage:
         """
         Apply BNR to the input image. Uses GPU if available, else CPU.
         """
@@ -63,7 +70,7 @@ class BayerNoiseReduction:
         
         return bnr_out_img
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -77,7 +84,7 @@ class BayerNoiseReduction:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> RawBayerImage:
         """
         Applying BNR to input RAW image and returns the output image
         """

@@ -8,6 +8,8 @@ Author: Brian Deegan (via AI)
 import numpy as np
 from scipy.ndimage import convolve
 
+from util.isp_types import DemosaicMasks, RawBayerImage
+
 
 class VNGDemosaic:
     """
@@ -21,12 +23,12 @@ class VNGDemosaic:
     This produces better edge preservation than bilinear or Malvar methods.
     """
 
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         self.height, self.width = self.img.shape
 
-    def _compute_gradients(self, pixel_vals):
+    def _compute_gradients(self, pixel_vals: dict[int, list[float]]) -> np.ndarray:
         """
         Compute gradient magnitudes for 8 directions.
         
@@ -50,7 +52,7 @@ class VNGDemosaic:
                 
         return gradients
 
-    def _get_threshold(self, gradients):
+    def _get_threshold(self, gradients: np.ndarray) -> float:
         """
         Compute threshold for selecting homogeneous directions.
         Uses 1.5 times the minimum gradient as threshold.
@@ -61,7 +63,7 @@ class VNGDemosaic:
         min_grad = np.min(valid_grads)
         return min_grad * 1.5
 
-    def apply_vng(self):
+    def apply_vng(self) -> np.ndarray:
         """
         Apply VNG demosaicing algorithm to the raw Bayer image.
         """
@@ -197,11 +199,11 @@ class VNGDemosaicOptimized:
     Faster than the basic VNG but still maintains edge-directed interpolation.
     """
     
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
 
-    def _compute_color_gradients(self, img):
+    def _compute_color_gradients(self, img: np.ndarray) -> list[np.ndarray]:
         """
         Compute gradient magnitudes in 8 directions using convolution.
         Returns gradient maps for each direction.
@@ -246,7 +248,7 @@ class VNGDemosaicOptimized:
             
         return gradients
 
-    def apply_vng_optimized(self):
+    def apply_vng_optimized(self) -> np.ndarray:
         """
         Apply optimized VNG demosaicing using vectorized operations.
         """

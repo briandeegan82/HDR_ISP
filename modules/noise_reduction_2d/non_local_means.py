@@ -12,13 +12,21 @@ import numpy as np
 from util.debug_utils import get_debug_logger
 from tqdm import tqdm
 
+from util.isp_types import NoiseReduction2DConfig, PlatformConfig, SensorInfo
+
 
 class NLM:
     """
     Non local means filter for noise reduction
     """
 
-    def __init__(self, img, sensor_info, parm_2dnr, platform):
+    def __init__(
+        self,
+        img: np.ndarray,
+        sensor_info: SensorInfo,
+        parm_2dnr: NoiseReduction2DConfig,
+        platform: PlatformConfig,
+    ) -> None:
         self.img = img
         self.sensor_info = sensor_info
         self.parm_2dnr = parm_2dnr
@@ -27,7 +35,7 @@ class NLM:
         self.is_leave = platform["leave_pbar_string"]
         self.logger = get_debug_logger("NoiseReduction2d", config=platform)
 
-    def get_weights(self):
+    def get_weights(self) -> np.ndarray:
         """
         Applying weights
         """
@@ -46,7 +54,7 @@ class NLM:
 
         return lut.astype(np.int32)
 
-    def apply_nlm(self):
+    def apply_nlm(self) -> np.ndarray:
         """
         Applying Non-local Means Filter
         """
@@ -128,7 +136,7 @@ class NLM:
 
         return denoised_out
 
-    def apply_mean_filter(self, array, patch_size):
+    def apply_mean_filter(self, array: np.ndarray, patch_size: int) -> np.ndarray:
         """
         Applying Mean Filter
         """

@@ -9,6 +9,7 @@ Author: 10xEngineers Pvt Ltd
 import time
 import re
 import numpy as np
+from util.isp_types import CropConfig, PlatformConfig, RawBayerImage, SensorInfo
 from util.utils import save_output_array
 from util.debug_utils import get_debug_logger
 
@@ -25,7 +26,13 @@ class Crop:
     as the input image.
     """
 
-    def __init__(self, img, platform, sensor_info, parm_cro):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_cro: CropConfig,
+    ) -> None:
         self.img = img
         self.sensor_info = sensor_info
         self.old_size = (sensor_info["height"], sensor_info["width"])
@@ -40,7 +47,7 @@ class Crop:
         self.platform = platform
         self.logger = get_debug_logger("Crop", config=self.platform)
 
-    def update_sensor_info(self, dictionary):
+    def update_sensor_info(self, dictionary: SensorInfo) -> None:
         """This function updates the variable stored in the dictionary sensor info."""
         if self.enable:
             if (
@@ -51,7 +58,9 @@ class Crop:
                 dictionary["width"] = self.new_size[1]
                 dictionary["orig_size"] = str(self.img.T.shape)
 
-    def crop(self, img, rows_to_crop=0, cols_to_crop=0):
+    def crop(
+        self, img: RawBayerImage, rows_to_crop: int = 0, cols_to_crop: int = 0
+    ) -> RawBayerImage:
 
         """
         Crop 2D array.
@@ -78,7 +87,7 @@ class Crop:
                 )
         return img
 
-    def apply_cropping(self):
+    def apply_cropping(self) -> RawBayerImage:
         """Crop Image"""
         if self.old_size == self.new_size:
             self.logger.info("   - Output size is the same as input size.")
@@ -120,7 +129,7 @@ class Crop:
             self.logger.info(f"   - Shape of cropped image = {cropped_img.shape}")
         return cropped_img
 
-    def save(self, filename_tag):
+    def save(self, filename_tag: str) -> None:
         """
         Function to save module output
         """
@@ -140,7 +149,7 @@ class Crop:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> RawBayerImage:
         """Execute cropping if enabled."""
         self.logger.info(f"Crop = {self.enable}")
 

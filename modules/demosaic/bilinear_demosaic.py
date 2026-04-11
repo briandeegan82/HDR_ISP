@@ -7,24 +7,31 @@ Author: Brian Deegan (chatGPT)
 import numpy as np
 from scipy.ndimage import convolve
 
+from util.isp_types import DemosaicMasks, RawBayerImage
+
 class BilinearDemosaic:
     """
     Correct bilinear demosaic using masks + proper kernels + normalization.
     Works for any Bayer layout as given by (mask_r, mask_g, mask_b).
     """
 
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]  # accept bool/0-1
 
     @staticmethod
-    def _interp(channel_masked, mask, kernel, mode='mirror'):
+    def _interp(
+        channel_masked: np.ndarray,
+        mask: np.ndarray,
+        kernel: np.ndarray,
+        mode: str = "mirror",
+    ) -> np.ndarray:
         """Convolve channel & mask with kernel and normalize safely."""
         num = convolve(channel_masked, kernel, mode=mode)
         den = convolve(mask,           kernel, mode=mode)
         return np.where(den > 0, num / den, 0.0)
 
-    def apply_bilinear(self):
+    def apply_bilinear(self) -> np.ndarray:
         raw = self.img
         mask_r, mask_g, mask_b = self.masks
 

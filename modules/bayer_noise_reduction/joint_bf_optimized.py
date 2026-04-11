@@ -13,6 +13,8 @@ from scipy import ndimage
 from tqdm import tqdm
 import cv2
 
+from util.isp_types import BayerNoiseReductionConfig, PlatformConfig, RawBayerImage, SensorInfo
+
 # Import GPU utilities with fallback
 try:
     from util.gpu_utils import (
@@ -23,22 +25,30 @@ try:
 except ImportError:
     GPU_UTILS_AVAILABLE = False
     # Fallback functions for CPU-only systems
-    def is_gpu_available():
+    def is_gpu_available() -> bool:
         return False
     
-    def should_use_gpu(img_size, operation):
+    def should_use_gpu(img_size: tuple[int, int], operation: str) -> bool:
         return False
     
-    def gpu_filter2d(img, kernel, use_gpu=True):
+    def gpu_filter2d(
+        img: np.ndarray, kernel: np.ndarray, use_gpu: bool = True
+    ) -> np.ndarray:
         return cv2.filter2D(img, -1, kernel)
     
-    def gpu_gaussian_blur(img, ksize, sigma_x, sigma_y=0, use_gpu=True):
-        return cv2.GaussianBlur(img, ksize, sigma_x, sigma_y)
+    def gpu_gaussian_blur(
+        img: np.ndarray,
+        ksize: tuple[int, int],
+        sigma_x: float,
+        sigma_y: float = 0,
+        use_gpu: bool = True,
+    ) -> np.ndarray:
+        return cv2.GaussianBlur(img, ksize, sigma_x, sigmaY=sigma_y)
     
-    def to_umat(img, use_gpu=True):
+    def to_umat(img: np.ndarray, use_gpu: bool = True) -> np.ndarray:
         return img
     
-    def from_umat(umat_or_array):
+    def from_umat(umat_or_array: np.ndarray) -> np.ndarray:
         return umat_or_array
 
 
@@ -48,7 +58,13 @@ class JointBFOptimized:
     with NumPy broadcast operations and GPU acceleration
     """
 
-    def __init__(self, img, sensor_info, parm_bnr, platform):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        sensor_info: SensorInfo,
+        parm_bnr: BayerNoiseReductionConfig,
+        platform: PlatformConfig,
+    ) -> None:
         self.img = img
         self.enable = parm_bnr["is_enable"]
         self.sensor_info = sensor_info
@@ -68,7 +84,16 @@ class JointBFOptimized:
         else:
             self._log.info("  Using CPU implementation for Bayer Noise Reduction")
 
-    def optimized_joint_bilateral_filter(self, in_img, guide_img, spatial_kern, stddev_s, range_kern, stddev_r, stride):
+    def optimized_joint_bilateral_filter(
+        self,
+        in_img: np.ndarray,
+        guide_img: np.ndarray,
+        spatial_kern: int,
+        stddev_s: float,
+        range_kern: int,
+        stddev_r: float,
+        stride: int,
+    ) -> np.ndarray:
         """
         Optimized joint bilateral filter using NumPy broadcast operations
         """
@@ -77,7 +102,16 @@ class JointBFOptimized:
         else:
             return self.optimized_joint_bilateral_filter_cpu(in_img, guide_img, spatial_kern, stddev_s, range_kern, stddev_r, stride)
 
-    def optimized_joint_bilateral_filter_cpu(self, in_img, guide_img, spatial_kern, stddev_s, range_kern, stddev_r, stride):
+    def optimized_joint_bilateral_filter_cpu(
+        self,
+        in_img: np.ndarray,
+        guide_img: np.ndarray,
+        spatial_kern: int,
+        stddev_s: float,
+        range_kern: int,
+        stddev_r: float,
+        stride: int,
+    ) -> np.ndarray:
         """
         CPU implementation using NumPy broadcast operations
         """
@@ -140,7 +174,16 @@ class JointBFOptimized:
         
         return filt_out
 
-    def optimized_joint_bilateral_filter_gpu(self, in_img, guide_img, spatial_kern, stddev_s, range_kern, stddev_r, stride):
+    def optimized_joint_bilateral_filter_gpu(
+        self,
+        in_img: np.ndarray,
+        guide_img: np.ndarray,
+        spatial_kern: int,
+        stddev_s: float,
+        range_kern: int,
+        stddev_r: float,
+        stride: int,
+    ) -> np.ndarray:
         """
         GPU-accelerated optimized joint bilateral filter
         """
@@ -170,7 +213,13 @@ class JointBFOptimized:
             self._log.warning(f"  GPU bilateral filter failed, falling back to CPU: {e}")
             return self.optimized_joint_bilateral_filter_cpu(in_img, guide_img, spatial_kern, stddev_s, range_kern, stddev_r, stride)
 
-    def apply_range_filter_optimized(self, spatial_filtered, guide_spatial, range_kern, stddev_r):
+    def apply_range_filter_optimized(
+        self,
+        spatial_filtered: np.ndarray,
+        guide_spatial: np.ndarray,
+        range_kern: int,
+        stddev_r: float,
+    ) -> np.ndarray:
         """
         Optimized range filtering using NumPy broadcast
         """
@@ -182,7 +231,7 @@ class JointBFOptimized:
         
         return result
 
-    def create_gaussian_kernel(self, size, sigma):
+    def create_gaussian_kernel(self, size: int, sigma: float) -> np.ndarray:
         """
         Create Gaussian kernel for filtering
         """
@@ -198,7 +247,9 @@ class JointBFOptimized:
         
         return kernel / np.sum(kernel)
 
-    def gauss_kern_raw(self, kern_size, sigma, stride):
+    def gauss_kern_raw(
+        self, kern_size: int, sigma: float, stride: int
+    ) -> np.ndarray:
         """
         Create Gaussian kernel (original method for compatibility)
         """
@@ -215,7 +266,7 @@ class JointBFOptimized:
         
         return kernel / np.sum(kernel)
 
-    def apply_jbf(self):
+    def apply_jbf(self) -> RawBayerImage:
         """
         Apply optimized joint bilateral filter to the input image
         """

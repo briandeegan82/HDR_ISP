@@ -9,9 +9,11 @@ Author: 10xEngineers Pvt Ltd
 import logging
 import numpy as np
 from util.debug_utils import get_debug_logger
+from util.isp_types import DeadPixelCorrectionConfig, PlatformConfig, RawBayerImage, SensorInfo
 from scipy.ndimage import maximum_filter, minimum_filter
 from numba import njit, prange
 import time
+from typing import cast
 
 # Try to import Numba, fall back to CPU if not available
 try:
@@ -29,7 +31,13 @@ class DynamicDPCNumbaOptimized:
     and gradient-guided interpolation. Optimized with Numba.
     """
 
-    def __init__(self, img, sensor_info, parm_dpc, platform=None):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        sensor_info: SensorInfo,
+        parm_dpc: DeadPixelCorrectionConfig,
+        platform: PlatformConfig | None = None,
+    ) -> None:
         self.img = img.astype(np.float32)
         self.sensor_info = sensor_info
         self.bpp = self.sensor_info.get("hdr_bit_depth", self.sensor_info["bit_depth"])
@@ -43,7 +51,7 @@ class DynamicDPCNumbaOptimized:
         else:
             self.logger.info("  Using CPU dead pixel correction")
 
-    def _should_use_numba(self):
+    def _should_use_numba(self) -> bool:
         """Determine if Numba optimization should be used based on image size."""
         if not NUMBA_AVAILABLE:
             return False
@@ -52,7 +60,9 @@ class DynamicDPCNumbaOptimized:
         image_size = self.img.shape[0] * self.img.shape[1]
         return image_size > 500000  # 500K threshold
 
-    def dynamic_dpc(self, return_mask=False):
+    def dynamic_dpc(
+        self, return_mask: bool = False
+    ) -> RawBayerImage | tuple[RawBayerImage, np.ndarray]:
         height, width = self.sensor_info["height"], self.sensor_info["width"]
 
         # Define 5x5 neighborhood footprint (cross-like)
@@ -138,23 +148,47 @@ class DynamicDPCNumbaOptimized:
             self.logger.info(f"   - Threshold = {self.threshold}")
 
         if return_mask:
-            return dpc_img, detection_mask.astype(np.uint8)
-        return dpc_img
+            return cast(RawBayerImage, dpc_img), detection_mask.astype(np.uint8)
+        return cast(RawBayerImage, dpc_img)
 
-    def dynamic_dpc_cpu(self):
+    def dynamic_dpc_cpu(self) -> RawBayerImage:
         """
         CPU fallback implementation using original algorithm
         """
         # Import the original implementation
         from modules.dead_pixel_correction.dynamic_dpc import DynamicDPC
-        dpc = DynamicDPC(self.img, self.sensor_info, {"dp_threshold": self.threshold, "is_debug": self.is_debug}, None)
+        if self.bpp > 16:
+            cpu_input = cast(RawBayerImage, self.img.astype(np.uint32))
+        else:
+            cpu_input = cast(RawBayerImage, self.img.astype(np.uint16))
+        dpc = DynamicDPC(
+            cpu_input,
+            self.sensor_info,
+            {
+                "is_enable": True,
+                "dp_threshold": self.threshold,
+                "is_debug": self.is_debug,
+                "is_save": False,
+            },
+            None,
+        )
         return dpc.dynamic_dpc()
 
 
 @njit(parallel=True)
-def _apply_correction_numba(img, detection_mask, min_grad,
-                           vertical_grad, horizontal_grad, left_diag_grad, right_diag_grad,
-                           mean_v, mean_h, mean_ld, mean_rd):
+def _apply_correction_numba(
+    img: np.ndarray,
+    detection_mask: np.ndarray,
+    min_grad: np.ndarray,
+    vertical_grad: np.ndarray,
+    horizontal_grad: np.ndarray,
+    left_diag_grad: np.ndarray,
+    right_diag_grad: np.ndarray,
+    mean_v: np.ndarray,
+    mean_h: np.ndarray,
+    mean_ld: np.ndarray,
+    mean_rd: np.ndarray,
+) -> np.ndarray:
     """
     Numba-optimized correction application kernel
     Only the compute-intensive loop is optimized with Numba
@@ -176,9 +210,19 @@ def _apply_correction_numba(img, detection_mask, min_grad,
     return corrected_img
 
 
-def _apply_correction_cpu(img, detection_mask, min_grad,
-                         vertical_grad, horizontal_grad, left_diag_grad, right_diag_grad,
-                         mean_v, mean_h, mean_ld, mean_rd):
+def _apply_correction_cpu(
+    img: np.ndarray,
+    detection_mask: np.ndarray,
+    min_grad: np.ndarray,
+    vertical_grad: np.ndarray,
+    horizontal_grad: np.ndarray,
+    left_diag_grad: np.ndarray,
+    right_diag_grad: np.ndarray,
+    mean_v: np.ndarray,
+    mean_h: np.ndarray,
+    mean_ld: np.ndarray,
+    mean_rd: np.ndarray,
+) -> np.ndarray:
     """
     CPU fallback for correction application
     """

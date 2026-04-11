@@ -3,11 +3,15 @@ Helper functions for automatic config file parameter update
 """
 
 import re
+from typing import cast
+
 import rawpy
 import numpy as np
 
+from util.isp_types import BayerPattern, ExtractedRawMetadata, ParsedFileNameInfo
 
-def parse_file_name(filename):
+
+def parse_file_name(filename: str) -> ParsedFileNameInfo | None:
     """
     Parse the file name
     """
@@ -17,12 +21,17 @@ def parse_file_name(filename):
     match_parttern = re.match(pattern, filename)
     if match_parttern:
         _, width, height, bit_depth, bayer = match_parttern.groups()
-        # Convert width, height, and bits to integers and bayer tp lower case
-        return [int(width), int(height), int(bit_depth), bayer.lower()]
-    return False
+        # Return named fields so the pipeline can type sensor metadata cleanly.
+        return {
+            "width": int(width),
+            "height": int(height),
+            "bit_depth": int(bit_depth),
+            "bayer_pattern": cast(BayerPattern, bayer.lower()),
+        }
+    return None
 
 
-def extract_raw_metadata(filename):
+def extract_raw_metadata(filename: str) -> ExtractedRawMetadata | None:
     """
     Extract Exif/Metadata Information from Raw File
     """
@@ -51,13 +60,20 @@ def extract_raw_metadata(filename):
         wb_gains = raw.camera_whitebalance
         ccm = raw.color_matrix
 
-        return [
-            int(width),
-            int(height),
-            int(bit_depth),
-            bayer_pattern,
-            black_level,
-            white_level,
-            wb_gains,
-            ccm,
-        ]
+        metadata: ExtractedRawMetadata = {
+            "width": int(width),
+            "height": int(height),
+            "bit_depth": int(bit_depth),
+            "bayer_pattern": cast(BayerPattern, bayer_pattern),
+            "black_level": cast(
+                tuple[int, int, int, int],
+                tuple(int(level) for level in black_level),
+            ),
+            "white_level": int(white_level),
+            "wb_gains": cast(
+                tuple[float, float, float, float],
+                tuple(float(gain) for gain in wb_gains),
+            ),
+            "ccm": ccm,
+        }
+        return metadata

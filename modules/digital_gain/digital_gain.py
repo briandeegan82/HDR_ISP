@@ -8,7 +8,9 @@ Author: 10xEngineers Pvt Ltd
 """
 import time
 import numpy as np
+from typing import cast
 
+from util.isp_types import DigitalGainConfig, PlatformConfig, SensorInfo, UInt32Image
 from util.utils import save_output_array
 
 
@@ -17,7 +19,13 @@ class DigitalGain:
     Digital Gain
     """
 
-    def __init__(self, img, platform, sensor_info, parm_dga):
+    def __init__(
+        self,
+        img: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_dga: DigitalGainConfig,
+    ) -> None:
         self.img = img.copy()
         self.is_save = parm_dga["is_save"]
         self.is_debug = parm_dga["is_debug"]
@@ -31,7 +39,7 @@ class DigitalGain:
         # Initialize debug logger
         self.logger = get_debug_logger("DigitalGain", config=self.platform)
 
-    def apply_digital_gain(self):
+    def apply_digital_gain(self) -> UInt32Image:
         """
         Apply Digital Gain - Provided in config file or
         according to AE Feedback
@@ -42,35 +50,40 @@ class DigitalGain:
         # dg = self.param_dga['dg_gain']
 
         # converting to float image
-        self.img = np.float32(self.img)
+        self.img = self.img.astype(np.float32, copy=False)
 
         # Gains are applied on the basis of AE-Feedback.
         # 'ae_correction == 0' - Default Gain is applied before AE feedback
         # 'ae_correction > 0' - Image is overexposed
         # 'ae_correction < 0' - Image is underexposed
 
-        if self.is_auto:
-
-            if self.ae_feedback < 0:
+        # "direct" AE mode sets current_gain in one shot (see brilliant_isp + AutoExposure);
+        # do not also nudge by ae_feedback here.
+        if self.is_auto and self.param_dga.get("exposure_correction_mode", "step") != "direct":
+            if self.ae_feedback is not None and self.ae_feedback < 0:
                 # max/min functions is applied to not allow digital gains exceed the defined limits
                 self.current_gain = min(
                     len(self.gains_array) - 1, self.current_gain + 1
                 )
 
-            elif self.ae_feedback > 0:
+            elif self.ae_feedback is not None and self.ae_feedback > 0:
                 self.current_gain = max(0, self.current_gain - 1)
 
         # Gain_Array is an array of pre-defined digital gains for ISP
-        self.img = self.gains_array[self.current_gain] * self.img
+        gval = float(self.gains_array[self.current_gain])
+        self.img = gval * self.img
 
+        self.logger.info(
+            f"  Applied gain index {self.current_gain} × {gval:g} (linear multiplier on raw)"
+        )
         if self.is_debug:
-            self.logger.info(f"   - DG  - Applied Gain = {self.gains_array[self.current_gain]}")
+            self.logger.info(f"   - DG  - Applied Gain = {gval}")
 
         # np.uint32 bit to contain the bpp bit raw
-        self.img = np.uint32(np.clip(self.img, 0, ((2**bpp) - 1)))
-        return self.img
+        self.img = np.clip(self.img, 0, ((2**bpp) - 1)).astype(np.uint32)
+        return cast(UInt32Image, self.img)
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -84,7 +97,7 @@ class DigitalGain:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> tuple[UInt32Image, int]:
         """
         Execute Digital Gain Module
         """

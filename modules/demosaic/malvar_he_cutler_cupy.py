@@ -9,6 +9,8 @@ import logging
 import numpy as np
 from scipy.signal import correlate2d
 
+from util.isp_types import DemosaicMasks, RawBayerImage
+
 # Try to import CuPy, fall back to CPU if not available
 try:
     import cupy as cp
@@ -23,7 +25,7 @@ class MalvarCuPy:
     CuPy-accelerated CFA interpolation or Demosaicing
     """
 
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = raw_in
         self.masks = masks
         self.use_gpu = CUPY_AVAILABLE and self._should_use_gpu()
@@ -34,7 +36,7 @@ class MalvarCuPy:
         else:
             self._log.info("  Using CPU Malvar-He-Cutler demosaicing")
 
-    def _should_use_gpu(self):
+    def _should_use_gpu(self) -> bool:
         """Determine if GPU acceleration should be used based on image size."""
         if not CUPY_AVAILABLE:
             return False
@@ -43,32 +45,36 @@ class MalvarCuPy:
         image_size = self.img.shape[0] * self.img.shape[1]
         return image_size > 1000000  # 1MP threshold
 
-    def _create_filters_cpu(self):
+    def _create_filters_cpu(
+        self,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Create filter kernels for CPU implementation."""
         # g_channel at r_channel & b_channel location
         g_at_r_and_b = (
-            np.float32(
+            np.array(
                 [
                     [0, 0, -1, 0, 0],
                     [0, 0, 2, 0, 0],
                     [-1, 2, 4, 2, -1],
                     [0, 0, 2, 0, 0],
                     [0, 0, -1, 0, 0],
-                ]
+                ],
+                dtype=np.float32,
             )
             * 0.125
         )
 
         # r_channel at green in r_channel row & b_channel column
         r_at_gr_and_b_at_gb = (
-            np.float32(
+            np.array(
                 [
                     [0, 0, 0.5, 0, 0],
                     [0, -1, 0, -1, 0],
                     [-1, 4, 5, 4, -1],
                     [0, -1, 0, -1, 0],
                     [0, 0, 0.5, 0, 0],
-                ]
+                ],
+                dtype=np.float32,
             )
             * 0.125
         )
@@ -76,28 +82,29 @@ class MalvarCuPy:
         r_at_gb_and_b_at_gr = np.transpose(r_at_gr_and_b_at_gb)
 
         r_at_b_and_b_at_r = (
-            np.float32(
+            np.array(
                 [
                     [0, 0, -1.5, 0, 0],
                     [0, 2, 0, 2, 0],
                     [-1.5, 0, 6, 0, -1.5],
                     [0, 2, 0, 2, 0],
                     [0, 0, -1.5, 0, 0],
-                ]
+                ],
+                dtype=np.float32,
             )
             * 0.125
         )
 
         return g_at_r_and_b, r_at_gr_and_b_at_gb, r_at_gb_and_b_at_gr, r_at_b_and_b_at_r
 
-    def apply_malvar_cpu(self):
+    def apply_malvar_cpu(self) -> np.ndarray:
         """CPU implementation of Malvar-He-Cutler demosaicing."""
         # 3D masks according to the given bayer
         mask_r, mask_g, mask_b = self.masks
-        raw_in = np.float32(self.img)
+        raw_in = self.img.astype(np.float32)
 
         # Declaring 3D Demosaiced image
-        demos_out = np.empty((raw_in.shape[0], raw_in.shape[1], 3))
+        demos_out = np.empty((raw_in.shape[0], raw_in.shape[1], 3), dtype=np.float32)
 
         # Create filter kernels
         g_at_r_and_b, r_at_gr_and_b_at_gb, r_at_gb_and_b_at_gr, r_at_b_and_b_at_r = self._create_filters_cpu()
@@ -169,12 +176,12 @@ class MalvarCuPy:
 
         return demos_out
 
-    def apply_malvar_gpu(self):
+    def apply_malvar_gpu(self) -> np.ndarray:
         """Hybrid GPU/CPU implementation of Malvar-He-Cutler demosaicing using CuPy."""
         try:
             # 3D masks according to the given bayer
             mask_r, mask_g, mask_b = self.masks
-            raw_in = np.float32(self.img)
+            raw_in = self.img.astype(np.float32)
 
             # Create filter kernels
             g_at_r_and_b, r_at_gr_and_b_at_gb, r_at_gb_and_b_at_gr, r_at_b_and_b_at_r = self._create_filters_cpu()
@@ -206,7 +213,7 @@ class MalvarCuPy:
             rb_at_gr_bbrr_gpu = cp.asarray(rb_at_gr_bbrr)
 
             # Declaring 3D Demosaiced image on GPU
-            demos_out_gpu = cp.empty((raw_in.shape[0], raw_in.shape[1], 3))
+            demos_out_gpu = cp.empty((raw_in.shape[0], raw_in.shape[1], 3), dtype=cp.float32)
 
             # Creating r_channel, g_channel & b_channel channels from raw_in
             r_channel_gpu = raw_in_gpu * mask_r_gpu
@@ -269,7 +276,7 @@ class MalvarCuPy:
             self._log.warning(f"  GPU processing failed: {e}, falling back to CPU")
             return self.apply_malvar_cpu()
 
-    def apply_malvar(self):
+    def apply_malvar(self) -> np.ndarray:
         """
         Demosaicing the given raw image using Malvar-He-Cutler
         """

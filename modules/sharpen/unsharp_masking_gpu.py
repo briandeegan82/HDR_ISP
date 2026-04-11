@@ -9,6 +9,8 @@ import numpy as np
 from scipy import ndimage
 import cv2
 
+from util.isp_types import RGBImage
+
 # Import GPU utilities with fallback
 try:
     from util.gpu_utils import (
@@ -19,19 +21,25 @@ try:
 except ImportError:
     GPU_UTILS_AVAILABLE = False
     # Fallback functions for CPU-only systems
-    def is_gpu_available():
+    def is_gpu_available() -> bool:
         return False
     
-    def should_use_gpu(img_size, operation):
+    def should_use_gpu(img_size: tuple[int, int], operation: str) -> bool:
         return False
     
-    def gpu_gaussian_blur(img, ksize, sigma_x, sigma_y=0, use_gpu=True):
-        return cv2.GaussianBlur(img, ksize, sigma_x, sigma_y)
+    def gpu_gaussian_blur(
+        img: np.ndarray,
+        ksize: tuple[int, int],
+        sigma_x: float,
+        sigma_y: float = 0,
+        use_gpu: bool = True,
+    ) -> np.ndarray:
+        return cv2.GaussianBlur(img, ksize, sigma_x, sigmaY=sigma_y)
     
-    def to_umat(img, use_gpu=True):
+    def to_umat(img: np.ndarray, use_gpu: bool = True) -> np.ndarray:
         return img
     
-    def from_umat(umat_or_array):
+    def from_umat(umat_or_array: np.ndarray) -> np.ndarray:
         return umat_or_array
 
 
@@ -40,7 +48,9 @@ class UnsharpMaskingGPU:
     GPU-accelerated Unsharp Masking Algorithm with automatic CPU fallback
     """
 
-    def __init__(self, img, sharpen_sigma, sharpen_strength):
+    def __init__(
+        self, img: RGBImage, sharpen_sigma: float, sharpen_strength: float
+    ) -> None:
         self.img = img
         self.sharpen_sigma = sharpen_sigma
         self.sharpen_strength = sharpen_strength
@@ -55,11 +65,11 @@ class UnsharpMaskingGPU:
         else:
             self._log.info("    Using CPU implementation for Unsharp Masking")
 
-    def apply_sharpen(self):
+    def apply_sharpen(self) -> RGBImage:
         """
         GPU-accelerated sharpening to the input image
         """
-        luma = np.float32(self.img[:, :, 0])
+        luma = self.img[:, :, 0].astype(np.float32)
 
         # Apply GPU-accelerated Gaussian blur if available
         if self.use_gpu and GPU_UTILS_AVAILABLE:
@@ -78,7 +88,7 @@ class UnsharpMaskingGPU:
         
         return self.img
 
-    def apply_gaussian_blur_gpu(self, luma):
+    def apply_gaussian_blur_gpu(self, luma: np.ndarray) -> np.ndarray:
         """
         GPU-accelerated Gaussian blur
         """
@@ -101,7 +111,7 @@ class UnsharpMaskingGPU:
             self._log.warning(f"    GPU Gaussian blur failed, falling back to CPU: {e}")
             return self.apply_gaussian_blur_cpu(luma)
 
-    def apply_gaussian_blur_cpu(self, luma):
+    def apply_gaussian_blur_cpu(self, luma: np.ndarray) -> np.ndarray:
         """
         CPU implementation of Gaussian blur
         """

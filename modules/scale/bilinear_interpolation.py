@@ -16,7 +16,7 @@ class BilinearInterpolation:
     """Scale 2D image to given size using OpenCV for high performance."""
 
     def __init__(self, img, new_size, use_gpu=False):
-        self.single_channel = np.float32(img)
+        self.single_channel = np.asarray(img, dtype=np.float32)
         self.new_size = new_size
         self.use_gpu = use_gpu and cv2.cuda.getCudaEnabledDeviceCount() > 0
 
@@ -52,7 +52,7 @@ class BilinearInterpolation:
         
         return scaled_img.astype("float32")
 
-    def downscale_by_int_factor(self):
+    def downscale_by_int_factor(self, new_size=None):
         """
         Downscale a 2D array by an integer scale factor using Bilinear method with 2D convolution.
         Parameters
@@ -62,13 +62,14 @@ class BilinearInterpolation:
         determined by the scale factors.
         """
 
-        scale_height = self.new_size[0] / self.single_channel.shape[0]
-        scale_width = self.new_size[1] / self.single_channel.shape[1]
+        target_size = self.new_size if new_size is None else new_size
+        scale_height = target_size[0] / self.single_channel.shape[0]
+        scale_width = target_size[1] / self.single_channel.shape[1]
 
         box_height = int(np.ceil(1 / scale_height))
         box_width = int(np.ceil(1 / scale_width))
 
-        scaled_img = np.zeros((self.new_size[0], self.new_size[1]), dtype="float32")
+        scaled_img = np.zeros((target_size[0], target_size[1]), dtype="float32")
         kernel = np.ones((box_height, box_width)) / (box_height * box_width)
 
         scaled_img = stride_convolve2d(self.single_channel, kernel)

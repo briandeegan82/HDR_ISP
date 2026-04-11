@@ -13,6 +13,8 @@ from scipy import ndimage
 from tqdm import tqdm
 import cv2
 
+from util.isp_types import BayerNoiseReductionConfig, PlatformConfig, RawBayerImage, SensorInfo
+
 # Import GPU utilities with fallback
 try:
     from util.gpu_utils import (
@@ -23,22 +25,30 @@ try:
 except ImportError:
     GPU_UTILS_AVAILABLE = False
     # Fallback functions for CPU-only systems
-    def is_gpu_available():
+    def is_gpu_available() -> bool:
         return False
     
-    def should_use_gpu(img_size, operation):
+    def should_use_gpu(img_size: tuple[int, int], operation: str) -> bool:
         return False
     
-    def gpu_filter2d(img, kernel, use_gpu=True):
+    def gpu_filter2d(
+        img: np.ndarray, kernel: np.ndarray, use_gpu: bool = True
+    ) -> np.ndarray:
         return cv2.filter2D(img, -1, kernel)
     
-    def gpu_gaussian_blur(img, ksize, sigma_x, sigma_y=0, use_gpu=True):
-        return cv2.GaussianBlur(img, ksize, sigma_x, sigma_y)
+    def gpu_gaussian_blur(
+        img: np.ndarray,
+        ksize: tuple[int, int],
+        sigma_x: float,
+        sigma_y: float = 0,
+        use_gpu: bool = True,
+    ) -> np.ndarray:
+        return cv2.GaussianBlur(img, ksize, sigma_x, sigmaY=sigma_y)
     
-    def to_umat(img, use_gpu=True):
+    def to_umat(img: np.ndarray, use_gpu: bool = True) -> np.ndarray:
         return img
     
-    def from_umat(umat_or_array):
+    def from_umat(umat_or_array: np.ndarray) -> np.ndarray:
         return umat_or_array
 
 
@@ -48,7 +58,13 @@ class JointBFGPU:
     with automatic CPU fallback for systems without GPU support
     """
 
-    def __init__(self, img, sensor_info, parm_bnr, platform):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        sensor_info: SensorInfo,
+        parm_bnr: BayerNoiseReductionConfig,
+        platform: PlatformConfig,
+    ) -> None:
         self.img = img
         self.enable = parm_bnr["is_enable"]
         self.sensor_info = sensor_info
@@ -68,7 +84,9 @@ class JointBFGPU:
         else:
             self._log.info("  Using CPU implementation for Bayer Noise Reduction")
 
-    def gpu_convolve(self, img, kernel, mode="reflect"):
+    def gpu_convolve(
+        self, img: np.ndarray, kernel: np.ndarray, mode: str = "reflect"
+    ) -> np.ndarray:
         """
         GPU-accelerated convolution with CPU fallback
         """
@@ -81,7 +99,16 @@ class JointBFGPU:
         else:
             return ndimage.convolve(img, kernel, mode=mode)
 
-    def fast_joint_bilateral_filter(self, img, guide_img, filt_size_s, stddev_s, filt_size_r, stddev_r, ch_type):
+    def fast_joint_bilateral_filter(
+        self,
+        img: np.ndarray,
+        guide_img: np.ndarray,
+        filt_size_s: int,
+        stddev_s: float,
+        filt_size_r: int,
+        stddev_r: float,
+        ch_type: int,
+    ) -> np.ndarray:
         """
         Fast joint bilateral filter implementation with GPU acceleration
         """
@@ -90,7 +117,16 @@ class JointBFGPU:
         else:
             return self.fast_joint_bilateral_filter_cpu(img, guide_img, filt_size_s, stddev_s, filt_size_r, stddev_r, ch_type)
 
-    def fast_joint_bilateral_filter_gpu(self, img, guide_img, filt_size_s, stddev_s, filt_size_r, stddev_r, ch_type):
+    def fast_joint_bilateral_filter_gpu(
+        self,
+        img: np.ndarray,
+        guide_img: np.ndarray,
+        filt_size_s: int,
+        stddev_s: float,
+        filt_size_r: int,
+        stddev_r: float,
+        ch_type: int,
+    ) -> np.ndarray:
         """
         GPU-accelerated fast joint bilateral filter
         """
@@ -120,7 +156,16 @@ class JointBFGPU:
             self._log.warning(f"  GPU bilateral filter failed, falling back to CPU: {e}")
             return self.fast_joint_bilateral_filter_cpu(img, guide_img, filt_size_s, stddev_s, filt_size_r, stddev_r, ch_type)
 
-    def fast_joint_bilateral_filter_cpu(self, img, guide_img, filt_size_s, stddev_s, filt_size_r, stddev_r, ch_type):
+    def fast_joint_bilateral_filter_cpu(
+        self,
+        img: np.ndarray,
+        guide_img: np.ndarray,
+        filt_size_s: int,
+        stddev_s: float,
+        filt_size_r: int,
+        stddev_r: float,
+        ch_type: int,
+    ) -> np.ndarray:
         """
         CPU implementation of fast joint bilateral filter (original implementation)
         """
@@ -136,7 +181,14 @@ class JointBFGPU:
         
         return result
 
-    def apply_range_filter_gpu(self, spatial_filtered, guide_spatial, filt_size_r, stddev_r, ch_type):
+    def apply_range_filter_gpu(
+        self,
+        spatial_filtered: np.ndarray,
+        guide_spatial: np.ndarray,
+        filt_size_r: int,
+        stddev_r: float,
+        ch_type: int,
+    ) -> np.ndarray:
         """
         GPU-accelerated range filtering
         """
@@ -158,7 +210,14 @@ class JointBFGPU:
             self._log.warning(f"  GPU range filter failed, falling back to CPU: {e}")
             return self.apply_range_filter(spatial_filtered, guide_spatial, filt_size_r, stddev_r, ch_type)
 
-    def apply_range_filter(self, spatial_filtered, guide_spatial, filt_size_r, stddev_r, ch_type):
+    def apply_range_filter(
+        self,
+        spatial_filtered: np.ndarray,
+        guide_spatial: np.ndarray,
+        filt_size_r: int,
+        stddev_r: float,
+        ch_type: int,
+    ) -> np.ndarray:
         """
         CPU implementation of range filtering
         """
@@ -170,7 +229,7 @@ class JointBFGPU:
         
         return result
 
-    def create_gaussian_kernel(self, size, sigma):
+    def create_gaussian_kernel(self, size: int, sigma: float) -> np.ndarray:
         """
         Create Gaussian kernel for filtering
         """
@@ -187,7 +246,7 @@ class JointBFGPU:
         
         return kernel / np.sum(kernel)
 
-    def apply_jbf(self):
+    def apply_jbf(self) -> RawBayerImage:
         """
         Apply GPU-accelerated joint bilateral filter to the input image
         """

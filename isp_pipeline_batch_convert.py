@@ -6,6 +6,7 @@ Based on isp_pipeline_mulitple_images.py
 import logging
 import os
 from pathlib import Path
+
 from tqdm import tqdm
 from brilliant_isp import BrilliantISP
 
@@ -21,7 +22,7 @@ EXTRACT_SENSOR_INFO = True
 UPDATE_BLC_WB = True
 
 
-def find_raw_files_recursively(root_path):
+def find_raw_files_recursively(root_path: str) -> list[str]:
     """
     Recursively find one .raw file per folder in the given root path
     """
@@ -43,7 +44,7 @@ def find_raw_files_recursively(root_path):
     return raw_files
 
 
-def process_single_raw_file(raw_file_path, config_path):
+def process_single_raw_file(raw_file_path: str, config_path: str) -> None:
     """
     Process a single .raw file and save the converted image to a 'convert' folder
     """
@@ -61,6 +62,7 @@ def process_single_raw_file(raw_file_path, config_path):
     
     # Initialize ISP with the file's directory and output to convert folder
     brilliant_isp = BrilliantISP(file_dir, config_path, convert_dir)
+    assert brilliant_isp.c_yaml is not None
     
     # Set generate_tv flag to false
     brilliant_isp.c_yaml["platform"]["generate_tv"] = False
@@ -94,7 +96,7 @@ def process_single_raw_file(raw_file_path, config_path):
         brilliant_isp.execute(file_name, load_method='3byte', byte_order='big')
 
 
-def batch_convert_raw_files():
+def batch_convert_raw_files() -> None:
     """
     Recursively find all .raw files in INPUT_ROOT_PATH and convert them
     """
@@ -120,7 +122,7 @@ def batch_convert_raw_files():
             continue
 
 
-def find_files(filename, search_path):
+def find_files(filename: str, search_path: str) -> bool:
     """
     This function is used to find the files in the search_path
     """

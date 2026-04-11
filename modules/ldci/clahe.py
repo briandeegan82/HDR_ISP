@@ -11,7 +11,10 @@ Author: x10xEngineers
 ------------------------------------------------------------
 """
 import math
+from typing import Any, cast
 import numpy as np
+
+from util.isp_types import LDCIConfig, PlatformConfig, SensorInfo
 
 
 class CLAHE:
@@ -19,7 +22,13 @@ class CLAHE:
     Contrast Limited Adaptive Histogram Equalization
     """
 
-    def __init__(self, yuv, platform, sensor_info, parm_ldci):
+    def __init__(
+        self,
+        yuv: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_ldci: LDCIConfig,
+    ) -> None:
         self.yuv = yuv
         self.img = yuv
         self.enable = parm_ldci["is_enable"]
@@ -29,7 +38,12 @@ class CLAHE:
         self.is_save = parm_ldci["is_save"]
         self.platform = platform
 
-    def pad_array(self, array, pads, mode="reflect"):
+    def pad_array(
+        self,
+        array: np.ndarray,
+        pads: Any,
+        mode: str = "reflect",
+    ) -> np.ndarray:
         """
         Pad an array with the given margins on left, right, top and bottom
         """
@@ -45,9 +59,11 @@ class CLAHE:
             else:
                 raise NotImplementedError
 
-        return np.pad(array, pads, mode)
+        return np.pad(array, cast(Any, pads), mode=cast(Any, mode))
 
-    def crop(self, array, crops):
+    def crop(
+        self, array: np.ndarray, crops: int | tuple[int, ...] | list[int] | np.ndarray
+    ) -> np.ndarray:
         """
         Crop an array within the given margins
         """
@@ -67,7 +83,7 @@ class CLAHE:
             top_crop : height - bottom_crop, left_crop : width - right_crop, ...
         ]
 
-    def get_tile_lut(self, tiled_array):
+    def get_tile_lut(self, tiled_array: np.ndarray) -> np.ndarray:
         """
         Generating LUT using histogram equalization
         """
@@ -93,7 +109,13 @@ class CLAHE:
 
         return look_up_table
 
-    def interp_blocks(self, weights, block, first_block_lut, second_block_lut):
+    def interp_blocks(
+        self,
+        weights: np.ndarray,
+        block: np.ndarray,
+        first_block_lut: np.ndarray,
+        second_block_lut: np.ndarray,
+    ) -> np.ndarray:
         """
         Interpolating blocks using alpha blending weights
         """
@@ -104,13 +126,25 @@ class CLAHE:
         # Interpolating both the LUTs
         return np.right_shift(first + second, 10).astype(np.uint8)
 
-    def interp_top_bottom_block(self, left_lut_weights, block, left_lut, current_lut):
+    def interp_top_bottom_block(
+        self,
+        left_lut_weights: np.ndarray,
+        block: np.ndarray,
+        left_lut: np.ndarray,
+        current_lut: np.ndarray,
+    ) -> np.ndarray:
         """
         Interpolating blocks present at top and bottom of the arrays
         """
         return self.interp_blocks(left_lut_weights, block, left_lut, current_lut)
 
-    def interp_left_right_block(self, top_lut_weights, block, top_lut, current_lut):
+    def interp_left_right_block(
+        self,
+        top_lut_weights: np.ndarray,
+        block: np.ndarray,
+        top_lut: np.ndarray,
+        current_lut: np.ndarray,
+    ) -> np.ndarray:
         """
         Interpolating blocks present at left and right of the arrays
         """
@@ -118,14 +152,14 @@ class CLAHE:
 
     def interp_neighbor_block(
         self,
-        left_lut_weights,
-        top_lut_weights,
-        block,
-        tl_lut,
-        top_lut,
-        left_lut,
-        current_lut,
-    ):
+        left_lut_weights: np.ndarray,
+        top_lut_weights: np.ndarray,
+        block: np.ndarray,
+        tl_lut: np.ndarray,
+        top_lut: np.ndarray,
+        left_lut: np.ndarray,
+        current_lut: np.ndarray,
+    ) -> np.ndarray:
         """
         Interpolating blocks present in the middle of the arrays
         """
@@ -141,7 +175,9 @@ class CLAHE:
         ).astype(np.uint8)
         return interp_final
 
-    def is_corner_block(self, x_tiles, y_tiles, i_col, i_row):
+    def is_corner_block(
+        self, x_tiles: int, y_tiles: int, i_col: int, i_row: int
+    ) -> bool:
         """
         Checking if the current image block is locating in a corner region
         """
@@ -152,7 +188,9 @@ class CLAHE:
             or (i_row == y_tiles and i_col == x_tiles)
         )
 
-    def is_top_or_bottom_block(self, x_tiles, y_tiles, i_col, i_row):
+    def is_top_or_bottom_block(
+        self, x_tiles: int, y_tiles: int, i_col: int, i_row: int
+    ) -> bool:
         """
         Checking if the current image block is locating in teh top or bottom region
         """
@@ -160,7 +198,9 @@ class CLAHE:
             x_tiles, y_tiles, i_col, i_row
         )
 
-    def is_left_or_right_block(self, x_tiles, y_tiles, i_col, i_row):
+    def is_left_or_right_block(
+        self, x_tiles: int, y_tiles: int, i_col: int, i_row: int
+    ) -> bool:
         """
         Checking if the current image block is locating in the left or right region
         """
@@ -168,7 +208,7 @@ class CLAHE:
             x_tiles, y_tiles, i_col, i_row
         )
 
-    def apply_clahe(self):
+    def apply_clahe(self) -> np.ndarray:
         """
         Applying clahe algorithm for contrast enhancement
         """

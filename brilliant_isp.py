@@ -7,20 +7,63 @@ Author: 10xEngineers Pvt Ltd
 """
 import time
 from pathlib import Path
+from typing import cast
 import numpy as np
-import yaml
 import rawpy
 from matplotlib import pyplot as plt
 import tifffile as tiff
 import os
 
 import util.utils as util
+from util.config_merge import (
+    ConfigPathArg,
+    format_config_source,
+    load_merged_yaml,
+    normalize_config_paths,
+    pipeline_config_paths,
+)
+from util.debug_utils import DebugLogger
 from util.debug_utils import get_debug_logger
 from util.histogram_utils import plot_histogram_comparison, estimate_dynamic_range
+from util.isp_types import (
+    AWBGains,
+    AutoExposureConfig,
+    BayerNoiseReductionConfig,
+    BlackLevelCorrectionConfig,
+    ByteOrder,
+    ColorCorrectionMatrixConfig,
+    ColorSaturationEnhancementConfig,
+    ColorSpaceConversionConfig,
+    CropConfig,
+    DeadPixelCorrectionConfig,
+    DemosaicConfig,
+    DigitalGainConfig,
+    ExtractedRawMetadata,
+    GammaCorrectionConfig,
+    GenericConfig,
+    LDCIConfig,
+    LensShadingCorrectionConfig,
+    NoiseReduction2DConfig,
+    ParsedFileNameInfo,
+    PipelineConfig,
+    PlatformConfig,
+    RawBayerImage,
+    RGBConversionConfig,
+    ScaleConfig,
+    SensorInfo,
+    SharpenConfig,
+    ToneMappingContext,
+    ToneMappingConfig,
+    ToneMappingParams,
+    WhiteBalanceConfig,
+    YUVConversionFormatConfig,
+)
 
 # HDR Image Reading Functions
 
-def read_hdr_3byte(file_path, width, height, byte_order='little'):
+def read_hdr_3byte(
+    file_path: str, width: int, height: int, byte_order: ByteOrder = "little"
+) -> np.ndarray | None:
     """
     Read HDR image using 3 consecutive bytes per pixel (24-bit packed).
     Little: LSB first (b0 | b1<<8 | b2<<16). Big: MSB first (b0<<16 | b1<<8 | b2).
@@ -40,7 +83,9 @@ def read_hdr_3byte(file_path, width, height, byte_order='little'):
         pixels = (b0 << 16) | (b1 << 8) | b2
     return pixels.reshape(height, width)
 
-def read_hdr_uint16(file_path, width, height, byte_order='little'):
+def read_hdr_uint16(
+    file_path: str, width: int, height: int, byte_order: ByteOrder = "little"
+) -> np.ndarray | None:
     """
     Read HDR image using uint16 pairs as uint32 pixels (low word | high word << 16).
     """
@@ -55,7 +100,7 @@ def read_hdr_uint16(file_path, width, height, byte_order='little'):
     pixels = uint16_data[0::2].astype(np.uint32) | (uint16_data[1::2].astype(np.uint32) << 16)
     return pixels.reshape(height, width)
 
-def analyze_file_size(file_path, logger=None):
+def analyze_file_size(file_path: str, logger=None) -> tuple[int, int]:
     """Analyze file size to suggest possible dimensions"""
     import logging
     log = logger or logging.getLogger("BrilliantISP.RawLoader")
@@ -66,6 +111,44 @@ def analyze_file_size(file_path, logger=None):
     pixels_uint16 = file_size // 4
     log.debug(f"Pixels (uint16 method): {pixels_uint16:,}")
     return pixels_3byte, pixels_uint16
+
+
+def infer_uint16_bayer_shape(
+    file_size: int, config_width: int, config_height: int
+) -> tuple[int, int]:
+    """
+    Infer (width, height) for a uint16 Bayer buffer when file size != config W*H*2
+    (e.g. bin2raw with --trim-top-rows / --image-offset-bytes).
+
+    Picks a factorization W*H = file_size/2 that minimizes |W-cw| + |H-ch| with
+    W,H in a sane range.
+    """
+    if file_size % 2 != 0:
+        raise ValueError("file size must be even")
+    pixels = file_size // 2
+    if pixels <= 0:
+        raise ValueError("empty file")
+    if pixels == config_width * config_height:
+        return config_width, config_height
+    best_w, best_h = -1, -1
+    best_score = float("inf")
+    # Prefer factorizations near configured dimensions (bin2raw trims change W/H slightly)
+    for h in range(max(64, config_height - 400), config_height + 400):
+        if h <= 0 or pixels % h != 0:
+            continue
+        w = pixels // h
+        if w < 64 or w > 16384:
+            continue
+        score = abs(w - config_width) + abs(h - config_height)
+        if score < best_score:
+            best_score = score
+            best_w, best_h = w, h
+    if best_w < 0:
+        raise ValueError(
+            f"no WxH with W*H={pixels} near {config_width}x{config_height}"
+        )
+    return best_w, best_h
+
 
 from modules.crop.crop import Crop
 from modules.dead_pixel_correction.dead_pixel_correction import (
@@ -112,17 +195,39 @@ class BrilliantISP:
     Brilliant-ISP Pipeline
     """
 
-    def __init__(self, data_path, config_path, outFileName, output_path=None):
+    def __init__(
+        self,
+        data_path: str,
+        config_path: ConfigPathArg,
+        outFileName: str,
+        output_path: str | None = None,
+    ) -> None:
         """
         Constructor: Initialize with config and raw file path
         and Load configuration parameter from yaml file
         """
         self.data_path = data_path
         self.output_path = output_path if output_path else "out_frames/"
-        self.outFileName=outFileName
+        self.outFileName = outFileName
+        self.logger: DebugLogger
+        self.platform: PlatformConfig | None = None
+        self.sensor_info: SensorInfo | None = None
+        self.c_yaml: PipelineConfig | None = None
+        self.raw: np.ndarray | None = None
+        self.decompanded_img: np.ndarray | None = None
+        self.awb_gains: AWBGains = (1.0, 1.0)
+        self.ae_feedback: int | None = None
+        self.dga_current_gain: int = 0
+        self.param_durand: ToneMappingParams = {}
+        self.param_aces: ToneMappingParams = {}
+        self.param_integer_tmo: ToneMappingParams = {}
+        self.param_aces_integer: ToneMappingParams = {}
+        self.param_hable: ToneMappingParams = {}
+        self.param_hable_integer: ToneMappingParams = {}
         # Ensure output directory exists
         os.makedirs(self.output_path, exist_ok=True)
         self.load_config(config_path)
+        assert self.platform is not None
         # Set global debug state from config
         from util.debug_utils import set_global_debug_enabled
         set_global_debug_enabled(self.platform.get('debug_enabled', False))
@@ -138,64 +243,88 @@ class BrilliantISP:
         "2d_noise_reduction", "rgb_conversion", "scale", "crop", "yuv_conversion_format",
     )
 
-    def load_config(self, config_path):
+    def load_config(self, config_path: ConfigPathArg) -> None:
         """
         Load config information to respective module parameters.
         Validates required keys and uses defaults for optional sections.
+
+        ``config_path`` may be a single YAML file or a list/tuple of paths merged
+        depth-first (later files override earlier ones for overlapping keys).
+
+        A single path whose name ends in ``_cam.yml`` is merged after
+        ``config/base_hdr.yml`` automatically (see ``pipeline_config_paths``).
         """
-        self.config_path = config_path
-        with open(config_path, "r", encoding="utf-8") as file:
-            c_yaml = yaml.safe_load(file)
+        if isinstance(config_path, (str, Path)):
+            paths = pipeline_config_paths(config_path)
+        else:
+            paths = normalize_config_paths(config_path)
+        self.config_path = format_config_source(paths)
+        c_yaml = cast(PipelineConfig, load_merged_yaml(paths))
 
         missing = [k for k in self._REQUIRED_CONFIG_KEYS if k not in c_yaml]
         if missing:
             raise KeyError(
-                f"Config '{config_path}' missing required keys: {missing}. "
-                "See config/svs_cam.yml for reference."
+                f"Config '{self.config_path}' missing required keys: {missing}. "
+                "See config/base_hdr.yml plus a *_cam.yml overlay (e.g. svs_cam.yml)."
             )
 
         # Extract workspace info
         self.platform = c_yaml["platform"]
+        self.platform["generate_tv"] = self.platform.get("generate_tv", False)
         self.platform["output_dir"] = "module_output"  # Directory for module debug outputs (curves, etc)
         self.raw_file = self.platform["filename"]
         self.render_3a = self.platform["render_3a"]
         self.sensor_info = c_yaml["sensor_info"]
 
         # ISP module params
-        self.parm_dpc = c_yaml["dead_pixel_correction"]
-        self.parm_cmpd = c_yaml["companding"]
-        self.parm_dga = c_yaml["digital_gain"]
-        self.parm_lsc = c_yaml["lens_shading_correction"]
-        self.parm_bnr = c_yaml["bayer_noise_reduction"]
-        self.parm_blc = c_yaml["black_level_correction"]
-        self.parm_oec = c_yaml.get("oecf", {"is_enable": False, "is_save": False})
-        self.parm_wbc = c_yaml["white_balance"]
-        self.parm_awb = c_yaml["auto_white_balance"]
-        self.parm_dem = c_yaml["demosaic"]
-        self.parm_ae = c_yaml["auto_exposure"]
-        self.parm_ccm = c_yaml["color_correction_matrix"]
-        self.parm_gmc = c_yaml["gamma_correction"]
+        self.parm_dpc: DeadPixelCorrectionConfig = c_yaml["dead_pixel_correction"]
+        self.parm_cmpd: GenericConfig = c_yaml["companding"]
+        self.parm_dga: DigitalGainConfig = c_yaml["digital_gain"]
+        self.parm_lsc: LensShadingCorrectionConfig = c_yaml["lens_shading_correction"]
+        self.parm_bnr: BayerNoiseReductionConfig = c_yaml["bayer_noise_reduction"]
+        self.parm_blc: BlackLevelCorrectionConfig = c_yaml["black_level_correction"]
+        self.parm_oec: GenericConfig = c_yaml.get(
+            "oecf", {"is_enable": False, "is_save": False}
+        )
+        self.parm_wbc: WhiteBalanceConfig = c_yaml["white_balance"]
+        self.parm_awb: GenericConfig = c_yaml["auto_white_balance"]
+        # Single source of truth: manual vs auto follows auto_white_balance.is_enable only.
+        self.parm_wbc["is_auto"] = self.parm_awb["is_enable"]
+        self.parm_dem: DemosaicConfig = c_yaml["demosaic"]
+        self.parm_ae: AutoExposureConfig = c_yaml["auto_exposure"]
+        self.parm_dga["exposure_correction_mode"] = self.parm_ae.get(
+            "exposure_correction_mode", "step"
+        )
+        self.parm_ccm: ColorCorrectionMatrixConfig = c_yaml["color_correction_matrix"]
+        self.parm_gmc: GammaCorrectionConfig = c_yaml["gamma_correction"]
         self.param_durand = c_yaml["hdr_durand"]
         self.param_aces = c_yaml.get("aces", {})
-        self.parm_csc = c_yaml["color_space_conversion"]
-        self.parm_cse = c_yaml["color_saturation_enhancement"]
-        self.parm_ldci = c_yaml["ldci"]
-        self.parm_sha = c_yaml["sharpen"]
-        self.parm_2dn = c_yaml["2d_noise_reduction"]
-        self.parm_rgb = c_yaml["rgb_conversion"]
-        self.parm_sca = c_yaml["scale"]
-        self.parm_cro = c_yaml["crop"]
-        self.parm_yuv = c_yaml["yuv_conversion_format"]
+        self.parm_csc: ColorSpaceConversionConfig = c_yaml["color_space_conversion"]
+        self.parm_cse: ColorSaturationEnhancementConfig = c_yaml["color_saturation_enhancement"]
+        self.parm_ldci: LDCIConfig = c_yaml["ldci"]
+        self.parm_sha: SharpenConfig = c_yaml["sharpen"]
+        self.parm_2dn: NoiseReduction2DConfig = c_yaml["2d_noise_reduction"]
+        self.parm_rgb: RGBConversionConfig = c_yaml["rgb_conversion"]
+        self.parm_sca: ScaleConfig = c_yaml["scale"]
+        self.parm_cro: CropConfig = c_yaml["crop"]
+        self.parm_yuv: YUVConversionFormatConfig = c_yaml["yuv_conversion_format"]
         self.c_yaml = c_yaml
         self.platform["rgb_output"] = self.parm_rgb["is_enable"]
+        initial_in_file = Path(self.raw_file).stem
+        self.platform["in_file"] = initial_in_file
+        self.platform["out_file"] = (
+            initial_in_file
+            if self.platform.get("short_output_names", False)
+            else "Out_" + initial_in_file
+        )
         self.bit_depth = self.sensor_info["bit_depth"]
-        self.tone_mapping = c_yaml["tone_mapping"]
+        self.tone_mapping: ToneMappingConfig = c_yaml["tone_mapping"]
         self.tone_mapping_before_demosaic = self.tone_mapping["tone_mapping_before_demosaic"]
         self.tone_mapper = self.tone_mapping["tone_mapper"]
         if self.tone_mapper == "aces":
             self.param_aces = c_yaml.get("aces", {})
-        if self.tone_mapper in ["integer", "reinhard_integer"]:
-            # Support both "integer_tmo" and "reinhard_integer" as config section names
+        if self.tone_mapper == "reinhard_integer":
+            # reinhard_integer section, or legacy integer_tmo section name
             self.param_integer_tmo = c_yaml.get("reinhard_integer", c_yaml.get("integer_tmo", {}))
         if self.tone_mapper == "aces_integer":
             self.param_aces_integer = c_yaml.get("aces_integer", {})
@@ -206,7 +335,7 @@ class BrilliantISP:
 
         # add rgb_output_conversion module
 
-    def load_raw(self, byte_order='little'):
+    def load_raw(self, byte_order: ByteOrder = "little") -> None:
         """
         Load raw image from provided path with enhanced HDR support
         
@@ -214,6 +343,8 @@ class BrilliantISP:
             byte_order (str): 'little' or 'big' endian for HDR loading
             reverse_uint32 (bool): If True, reverse byte order within uint32 pixel values
         """
+        if self.platform is None or self.sensor_info is None:
+            raise RuntimeError("Configuration must be loaded before loading RAW input.")
         # Load raw image file information
         path_object = Path(self.data_path, self.raw_file)
         raw_path = str(path_object.resolve())
@@ -267,12 +398,46 @@ class BrilliantISP:
 
                 self.logger.info("Falling back to 2-byte uint16 method...")
                 expected_2byte = width * height * 2
-                if file_size < expected_2byte:
+                load_w, load_h = width, height
+                if file_size != expected_2byte:
+                    try:
+                        load_w, load_h = infer_uint16_bayer_shape(
+                            file_size, width, height
+                        )
+                    except ValueError as e:
+                        raise RuntimeError(
+                            f"Raw size {file_size} bytes does not match config {width}x{height} "
+                            f"({expected_2byte} B expected) and could not infer dimensions: {e}. "
+                            f"Set sensor_info width/height to match bin2raw extraction_meta.txt "
+                            f"(e.g. after --trim-top-rows / --image-offset-bytes)."
+                        ) from e
+                    if load_w != width or load_h != height:
+                        self.logger.warning(
+                            f"Inferred raw shape {load_w}x{load_h} from file size "
+                            f"(config was {width}x{height}). Update sensor_info in your YAML."
+                        )
+                        self.sensor_info["width"] = load_w
+                        self.sensor_info["height"] = load_h
+                need_bytes = load_w * load_h * 2
+                if file_size < need_bytes:
                     raise RuntimeError(
-                        f"Raw file too small: expected at least {expected_2byte} bytes "
-                        f"(for 2-byte {width}x{height}), got {file_size}"
+                        f"Raw file too small: need {need_bytes} bytes for {load_w}x{load_h}, got {file_size}"
                     )
-                self.raw = np.fromfile(raw_path, dtype='>u2').reshape((height, width))
+                if file_size > need_bytes:
+                    self.logger.warning(
+                        f"Raw file is {file_size - need_bytes} bytes longer than {load_w}x{load_h}x2; "
+                        f"truncating to {need_bytes} bytes"
+                    )
+                et = str(self.sensor_info.get("endian_type", "")).lower()
+                if "le" in et or "little" in et:
+                    raw_dtype = "<u2"
+                else:
+                    # ieee-be / big / omitted (legacy default was always big-endian)
+                    raw_dtype = ">u2"
+                count = load_w * load_h
+                self.raw = np.fromfile(raw_path, dtype=raw_dtype, count=count).reshape(
+                    (load_h, load_w)
+                )
             else:
                 # For 8-bit or lower, use original method
                 self.raw = (
@@ -294,10 +459,88 @@ class BrilliantISP:
             
 
 
-    def run_pipeline(self, visualize_output=True):
+    def run_pipeline_up_to_wb(self) -> None:
+        """
+        Execute the pipeline up to and including white balance.
+        Used for profiling demosaic and tone mapping modules.
+        Stores result in self.current_frame.
+        """
+        # Set skip_disabled to avoid running disabled modules
+        skip_disabled = self.platform.get("skip_disabled_modules", False)
+        
+        # Run all stages up to white balance
+        # Crop
+        if skip_disabled and not self.parm_cro["is_enable"]:
+            cropped_img = self.raw
+        else:
+            crop = Crop(self.raw, self.platform, self.sensor_info, self.parm_cro)
+            cropped_img = crop.execute()
+
+        # Dead Pixel Correction
+        if skip_disabled and not self.parm_dpc["is_enable"]:
+            dpc_raw = cropped_img
+        else:
+            dpc = DPC(cropped_img, self.sensor_info, self.parm_dpc, self.platform)
+            dpc_raw = dpc.execute()
+
+        # Black Level Correction
+        if skip_disabled and not self.parm_blc["is_enable"]:
+            blc_raw = dpc_raw
+        else:
+            blc = BLC(dpc_raw, self.platform, self.sensor_info, self.parm_blc)
+            blc_raw = blc.execute()
+
+        # Decompanding
+        if skip_disabled and not self.parm_cmpd["is_enable"]:
+            cmpd_raw = blc_raw.astype(np.uint32)
+        else:
+            cmpd = PWC(blc_raw, self.platform, self.sensor_info, self.parm_cmpd)
+            cmpd_raw = cmpd.execute()
+
+        # OECF
+        if skip_disabled and not self.parm_oec.get("is_enable", False):
+            oecf_raw = cmpd_raw
+        else:
+            oecf = OECF(cmpd_raw, self.platform, self.sensor_info, self.parm_oec)
+            oecf_raw = oecf.execute()
+
+        # Digital Gain
+        dga = DG(oecf_raw, self.platform, self.sensor_info, self.parm_dga)
+        dga_raw, self.dga_current_gain = dga.execute()
+
+        # Lens Shading Correction
+        if skip_disabled and not self.parm_lsc.get("is_enable", True):
+            lsc_raw = dga_raw
+        else:
+            lsc = LSC(dga_raw, self.platform, self.sensor_info, self.parm_lsc)
+            lsc_raw = lsc.execute()
+
+        # Bayer Noise Reduction
+        if skip_disabled and not self.parm_bnr["is_enable"]:
+            bnr_raw = lsc_raw
+        else:
+            bnr = BNR(lsc_raw, self.sensor_info, self.parm_bnr, self.platform)
+            bnr_raw = bnr.execute()
+
+        # Auto White Balance
+        awb = AWB(bnr_raw, self.sensor_info, self.parm_awb, self.parm_wbc)
+        self.awb_gains = cast(AWBGains, awb.execute())
+
+        # White Balance
+        wbc = WBOPT(bnr_raw, self.platform, self.sensor_info, self.parm_wbc, self.awb_gains)
+        wb_raw = wbc.execute()
+        
+        # Store result
+        self.current_frame = wb_raw
+
+    def run_pipeline(self, visualize_output: bool = True) -> None:
         """
         Simulation of ISP-Pipeline
         """
+        if self.raw is None:
+            raise RuntimeError("RAW image must be loaded before running the pipeline.")
+        if self.platform is None or self.sensor_info is None or self.c_yaml is None:
+            raise RuntimeError("Configuration must be loaded before running the pipeline.")
         skip_disabled = self.platform.get("skip_disabled_modules", False)
 
         # =====================================================================
@@ -342,80 +585,122 @@ class BrilliantISP:
         else:
             oecf = OECF(cmpd_raw, self.platform, self.sensor_info, self.parm_oec)
             oecf_raw = oecf.execute()
+        oecf_raw = cast(np.ndarray, oecf_raw)
 
         # =====================================================================
-        # Digital Gain (receives OECF output per pipeline order: PWC -> OECF -> DG)
-        dga = DG(oecf_raw, self.platform, self.sensor_info, self.parm_dga)
-        dga_raw, self.dga_current_gain = dga.execute()
+        # Digital Gain → … → Auto-Exposure (2nd pass for direct AE: pass 1 meters, pass 2 applies new index)
+        # rerun_from_digital_gain defaults True when omitted so direct mode actually affects this frame.
+        max_ae_passes = 2 if (
+            self.parm_dga["is_auto"]
+            and self.parm_ae.get("exposure_correction_mode", "step") == "direct"
+            and self.parm_ae.get("rerun_from_digital_gain", True)
+            and self.parm_ae["is_enable"]
+        ) else 1
 
-        # =====================================================================
-        # Lens shading correction
-        if skip_disabled and not self.parm_lsc.get("is_enable", True):
-            lsc_raw = dga_raw
-        else:
-            lsc = LSC(dga_raw, self.platform, self.sensor_info, self.parm_lsc)
-            lsc_raw = lsc.execute()
+        for ae_pass in range(max_ae_passes):
+            prev_idx = self.parm_dga["current_gain"]
 
-        # =====================================================================
-        # Bayer noise reduction
-        if skip_disabled and not self.parm_bnr["is_enable"]:
-            bnr_raw = lsc_raw
-        else:
-            bnr = BNR(lsc_raw, self.sensor_info, self.parm_bnr, self.platform)
-            bnr_raw = bnr.execute()
+            # =====================================================================
+            # Digital Gain (receives OECF output per pipeline order: PWC -> OECF -> DG)
+            dga = DG(oecf_raw, self.platform, self.sensor_info, self.parm_dga)
+            dga_raw, self.dga_current_gain = dga.execute()
 
+            # =====================================================================
+            # Lens shading correction
+            if skip_disabled and not self.parm_lsc.get("is_enable", True):
+                lsc_raw = dga_raw
+            else:
+                lsc = LSC(dga_raw, self.platform, self.sensor_info, self.parm_lsc)
+                lsc_raw = lsc.execute()
 
-        # =====================================================================
-        # Auto White Balance
-        awb = AWB(bnr_raw, self.sensor_info, self.parm_awb, self.parm_wbc)
-        self.awb_gains = awb.execute()
+            # =====================================================================
+            # Bayer noise reduction
+            if skip_disabled and not self.parm_bnr["is_enable"]:
+                bnr_raw = lsc_raw
+            else:
+                bnr = BNR(lsc_raw, self.sensor_info, self.parm_bnr, self.platform)
+                bnr_raw = bnr.execute()
 
-        # =====================================================================
-        # White balancing
-        # Use optimized version for better performance
-        wbc = WBOPT(bnr_raw, self.platform, self.sensor_info, self.parm_wbc, self.awb_gains)
-        wb_raw = wbc.execute()
+            # =====================================================================
+            # Auto White Balance
+            awb = AWB(bnr_raw, self.sensor_info, self.parm_awb, self.parm_wbc)
+            self.awb_gains = cast(AWBGains, awb.execute())
 
+            # =====================================================================
+            # White balancing
+            # Use optimized version for better performance
+            wbc = WBOPT(bnr_raw, self.platform, self.sensor_info, self.parm_wbc, self.awb_gains)
+            wb_raw = wbc.execute()
 
-#%%
-       # # =====================================================================
-       # HDR tone mapping before Demosaicing
-        if  self.tone_mapping_before_demosaic:
-            tone_mapper = tone_mapping(wb_raw, pipeline_self=self)
-            hdr_raw = tone_mapper.execute()
-            self.logger.info(f"HDR Image mean: {np.mean(hdr_raw)}")
-        else:
-            max_val = 2**self.sensor_info.get("hdr_bit_depth", 24) - 1
-            hdr_raw = (wb_raw.astype(np.float32) * (65535.0 / max_val)).astype(np.uint16)
+            # Store current frame for external processing
+            self.current_frame = wb_raw
 
-#%%        # =====================================================================
-        # CFA demosaicing
-        cfa_inter = Demosaic(hdr_raw, self.platform, self.sensor_info, self.parm_dem)
-        demos_img = cfa_inter.execute()
-        self.logger.info(f"Demosaiced Image mean: {np.mean(demos_img)}")
-        
-        # =====================================================================
-        # Color correction matrix
-        # Use optimized version for better performance
-        ccm = CCMOPT(demos_img, self.platform, self.sensor_info, self.parm_ccm)
-        ccm_img = ccm.execute()
-        self.logger.info(f"CCM Image mean: {np.mean(ccm_img)}")
-        #%%
+            # =====================================================================
+            # HDR tone mapping before Demosaicing
+            if self.tone_mapping_before_demosaic:
+                tone_mapper = tone_mapping(
+                    wb_raw, pipeline_self=cast(ToneMappingContext, self)
+                )
+                hdr_raw = tone_mapper.execute()
+                self.logger.info(f"HDR Image mean: {np.mean(hdr_raw)}")
+            else:
+                max_val = 2**self.sensor_info.get("hdr_bit_depth", 24) - 1
+                hdr_raw = (wb_raw.astype(np.float32) * (65535.0 / max_val)).astype(np.uint16)
 
-        # =====================================================================
-        # HDR tone mapping after Demosaicing
-        if not self.tone_mapping_before_demosaic:
-            tone_mapper = tone_mapping(ccm_img, pipeline_self=self)
-            CCM_tone_mapped = tone_mapper.execute()
-            self.logger.info(f"HDR Image mean: {np.mean(CCM_tone_mapped)}")
-            ccm_img = CCM_tone_mapped
-            
-        # =====================================================================
-        # Auto-Exposure (operates on 16-bit linear RGB before bit conversion)
-        # This provides maximum precision for exposure metering
-        aef = AE(ccm_img, self.sensor_info, self.parm_ae)
-        self.ae_feedback = aef.execute()
-        self.logger.info(f"AE Feedback: {self.ae_feedback}")
+            # =====================================================================
+            # CFA demosaicing
+            cfa_inter = Demosaic(
+                cast(RawBayerImage, hdr_raw), self.platform, self.sensor_info, self.parm_dem
+            )
+            demos_img = cfa_inter.execute()
+            self.logger.info(f"Demosaiced Image mean: {np.mean(demos_img)}")
+
+            # =====================================================================
+            # Color correction matrix
+            # Use optimized version for better performance
+            ccm = CCMOPT(demos_img, self.platform, self.sensor_info, self.parm_ccm)
+            ccm_img = ccm.execute()
+            self.logger.info(f"CCM Image mean: {np.mean(ccm_img)}")
+
+            # =====================================================================
+            # HDR tone mapping after Demosaicing
+            if not self.tone_mapping_before_demosaic:
+                tone_mapper = tone_mapping(
+                    ccm_img, pipeline_self=cast(ToneMappingContext, self)
+                )
+                CCM_tone_mapped = tone_mapper.execute()
+                self.logger.info(f"HDR Image mean: {np.mean(CCM_tone_mapped)}")
+                ccm_img = CCM_tone_mapped
+
+            # =====================================================================
+            # Auto-Exposure (operates on 16-bit linear RGB before bit conversion)
+            # This provides maximum precision for exposure metering
+            aef = AE(ccm_img, self.sensor_info, self.parm_ae)
+            self.ae_feedback = aef.execute()
+            self.logger.info(f"AE Feedback: {self.ae_feedback}")
+
+            direct_ok = (
+                self.parm_dga["is_auto"]
+                and self.parm_ae.get("exposure_correction_mode", "step") == "direct"
+                and self.parm_ae["is_enable"]
+                and aef.last_meter_average is not None
+            )
+            new_idx = prev_idx
+            if direct_ok:
+                new_idx = aef.suggest_direct_gain_index(
+                    prev_idx, self.parm_dga["gain_array"]
+                )
+                self.parm_dga["current_gain"] = new_idx
+                if self.c_yaml is not None:
+                    self.c_yaml["digital_gain"]["current_gain"] = new_idx
+                self.dga_current_gain = new_idx
+                self.parm_dga["ae_feedback"] = None
+            if (
+                not direct_ok
+                or ae_pass + 1 >= max_ae_passes
+                or new_idx == prev_idx
+            ):
+                break
 
         # =====================================================================
         # Convert 16-bit linear RGB to 8-bit linear RGB for YUV processing
@@ -582,20 +867,28 @@ class BrilliantISP:
                     plot_histogram_comparison(
                         self.decompanded_img,
                         out_rgb,
-                        output_dir=self.platform["output_dir"],
+                        output_dir=self.platform.get("output_dir", "module_output"),
                         filename=histogram_filename,
                         input_label="Input (after decompanding)",
                         output_label="Output",
                         show_log=show_log
                     )
                     
-                    self.logger.info(f"Histogram comparison saved to: {self.platform['output_dir']}/{histogram_filename}")
+                    output_dir = self.platform.get("output_dir", "module_output")
+                    self.logger.info(
+                        f"Histogram comparison saved to: {output_dir}/{histogram_filename}"
+                    )
                 except Exception as e:
                     self.logger.warning(f"Failed to plot histograms: {e}")
 
             util.save_pipeline_output(self.out_file, out_rgb, self.c_yaml, self.outFileName, self.output_path, short_names=short_names)
 
-    def execute(self, img_path=None, load_method='auto', byte_order='little'):
+    def execute(
+        self,
+        img_path: str | None = None,
+        load_method: str = "auto",
+        byte_order: ByteOrder = "little",
+    ) -> None:
         """
         Start execution of Brilliant-ISP
         
@@ -605,6 +898,8 @@ class BrilliantISP:
             byte_order (str): 'little' or 'big'
             reverse_uint32 (bool): If True, reverse byte order within uint32 pixel values
         """
+        if self.c_yaml is None:
+            raise RuntimeError("Configuration must be loaded before execution.")
         if img_path is not None:
             self.raw_file = img_path
             self.c_yaml["platform"]["filename"] = self.raw_file
@@ -634,10 +929,12 @@ class BrilliantISP:
         # Calculate pipeline execution time
         self.logger.info(f"\nPipeline Elapsed Time: {time.time() - start:.3f}s")
 
-    def load_3a_statistics(self, awb_on=True, ae_on=True):
+    def load_3a_statistics(self, awb_on: bool = True, ae_on: bool = True) -> None:
         """
         Update 3A Stats into WB and DG modules parameters
         """
+        if self.c_yaml is None:
+            raise RuntimeError("Configuration must be loaded before updating 3A statistics.")
         # Update 3A in c_yaml too because it is output config
         if awb_on is True and self.parm_dga["is_auto"] and self.parm_awb["is_enable"]:
             self.parm_wbc["r_gain"] = self.c_yaml["white_balance"]["r_gain"] = float(
@@ -654,7 +951,7 @@ class BrilliantISP:
                 "current_gain"
             ] = self.dga_current_gain
 
-    def execute_with_3a_statistics(self):
+    def execute_with_3a_statistics(self) -> None:
         """
         Execute Brilliant-ISP with AWB gains and correct exposure
         """
@@ -676,59 +973,70 @@ class BrilliantISP:
 
         self.run_pipeline(visualize_output=True)
 
-    def update_sensor_info(self, sensor_info, update_blc_wb=False):
+    def update_sensor_info(
+        self,
+        sensor_info: ParsedFileNameInfo | ExtractedRawMetadata,
+        update_blc_wb: bool = False,
+    ) -> None:
         """
         Update sensor_info in config files
         """
-        self.sensor_info["width"] = self.c_yaml["sensor_info"]["width"] = sensor_info[0]
+        if self.sensor_info is None or self.c_yaml is None:
+            raise RuntimeError("Configuration must be loaded before updating sensor info.")
+        self.sensor_info["width"] = self.c_yaml["sensor_info"]["width"] = sensor_info["width"]
 
-        self.sensor_info["height"] = self.c_yaml["sensor_info"]["height"] = sensor_info[
-            1
-        ]
+        self.sensor_info["height"] = self.c_yaml["sensor_info"]["height"] = sensor_info["height"]
 
-        self.sensor_info["bit_depth"] = self.c_yaml["sensor_info"][
+        self.sensor_info["bit_depth"] = self.c_yaml["sensor_info"]["bit_depth"] = sensor_info[
             "bit_depth"
-        ] = sensor_info[2]
+        ]
 
         self.sensor_info["bayer_pattern"] = self.c_yaml["sensor_info"][
             "bayer_pattern"
-        ] = sensor_info[3]
+        ] = sensor_info["bayer_pattern"]
 
         if update_blc_wb:
+            black_level = sensor_info.get("black_level")
+            white_level = sensor_info.get("white_level")
+            wb_gains = sensor_info.get("wb_gains")
+            if black_level is None or white_level is None or wb_gains is None:
+                raise ValueError(
+                    "update_blc_wb=True requires black_level, white_level, and wb_gains metadata."
+                )
             self.parm_blc["r_offset"] = self.c_yaml["black_level_correction"][
                 "r_offset"
-            ] = sensor_info[4][0]
+            ] = black_level[0]
             self.parm_blc["gr_offset"] = self.c_yaml["black_level_correction"][
                 "gr_offset"
-            ] = sensor_info[4][1]
+            ] = black_level[1]
             self.parm_blc["gb_offset"] = self.c_yaml["black_level_correction"][
                 "gb_offset"
-            ] = sensor_info[4][2]
+            ] = black_level[2]
             self.parm_blc["b_offset"] = self.c_yaml["black_level_correction"][
                 "b_offset"
-            ] = sensor_info[4][3]
+            ] = black_level[3]
 
             self.parm_blc["r_sat"] = self.c_yaml["black_level_correction"][
                 "r_sat"
-            ] = sensor_info[5]
+            ] = white_level
             self.parm_blc["gr_sat"] = self.c_yaml["black_level_correction"][
                 "gr_sat"
-            ] = sensor_info[5]
+            ] = white_level
             self.parm_blc["gb_sat"] = self.c_yaml["black_level_correction"][
                 "gb_sat"
-            ] = sensor_info[5]
+            ] = white_level
             self.parm_blc["b_sat"] = self.c_yaml["black_level_correction"][
                 "b_sat"
-            ] = sensor_info[5]
+            ] = white_level
 
             self.parm_wbc["r_gain"] = self.c_yaml["white_balance"][
                 "r_gain"
-            ] = sensor_info[6][0]
+            ] = wb_gains[0]
             self.parm_wbc["b_gain"] = self.c_yaml["white_balance"][
                 "b_gain"
-            ] = sensor_info[6][2]
+            ] = wb_gains[2]
 
-            # if sensor_info[7] is not None:
-            #     self.parm_ccm["corrected_red"] = sensor_info[7][0,0:3]
-            #     self.parm_ccm["corrected_green"] = sensor_info[7][1,0:3]
-            #     self.parm_ccm["corrected_blue"] = sensor_info[7][2,0:3]
+            # if sensor_info.get("ccm") is not None:
+            #     self.parm_ccm["corrected_red"] = sensor_info["ccm"][0, 0:3]
+            #     self.parm_ccm["corrected_green"] = sensor_info["ccm"][1, 0:3]
+            #     self.parm_ccm["corrected_blue"] = sensor_info["ccm"][2, 0:3]

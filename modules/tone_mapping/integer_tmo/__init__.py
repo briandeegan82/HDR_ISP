@@ -1,5 +1,5 @@
 """Integer-native tone mapping for production-style ISPs."""
-from .integer_tone_mapping import IntegerToneMapping
+from .integer_tone_mapping import IntegerReinhardToneMapping, IntegerToneMapping
 from .aces_integer_tone_mapping import ACESIntegerToneMapping
 
-__all__ = ["IntegerToneMapping", "ACESIntegerToneMapping"]
+__all__ = ["IntegerReinhardToneMapping", "IntegerToneMapping", "ACESIntegerToneMapping"]

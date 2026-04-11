@@ -6,11 +6,13 @@ Supports: curve='gamma' (power) or curve='srgb' (IEC 61966-2-1).
 """
 import time
 import numpy as np
+from typing import cast
 
+from util.isp_types import GammaCorrectionConfig, PlatformConfig, RGBImage, SensorInfo, UInt16Image
 from util.utils import save_output_array
 
 
-def _srgb_oetf(x):
+def _srgb_oetf(x: np.ndarray) -> np.ndarray:
     """
     sRGB OETF (linear to display). IEC 61966-2-1.
     x <= 0.0031308: 12.92 * x
@@ -28,7 +30,13 @@ class GammaCorrection:
     Gamma correction. curve='gamma' (power) or curve='srgb'.
     """
 
-    def __init__(self, img, platform, sensor_info, parm_gmm):
+    def __init__(
+        self,
+        img: RGBImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_gmm: GammaCorrectionConfig,
+    ) -> None:
         self.img = img
         self.enable = parm_gmm["is_enable"]
         self.sensor_info = sensor_info
@@ -40,7 +48,7 @@ class GammaCorrection:
         self.gamma = parm_gmm.get("gamma", 2.2)
         self.logger = get_debug_logger("GammaCorrection", config=self.platform)
 
-    def generate_gamma_lut(self, bit_depth):
+    def generate_gamma_lut(self, bit_depth: int) -> UInt16Image:
         """Generate LUT: 'gamma' = power curve, 'srgb' = sRGB OETF."""
         max_val = 2**bit_depth - 1
         x = np.arange(0, max_val + 1, dtype=np.float64) / max_val
@@ -53,7 +61,7 @@ class GammaCorrection:
         lut = np.clip(np.round(out * max_val), 0, max_val).astype(np.uint16)
         return lut
 
-    def apply_gamma(self):
+    def apply_gamma(self) -> RGBImage:
         """
         Apply Gamma LUT on n-bit Image.
         Input: Can be 8-bit (from RGB conversion) or 16-bit (from CCM/tone mapping).
@@ -77,8 +85,17 @@ class GammaCorrection:
         input_max = 2**input_bit_depth - 1
         lut = self.generate_gamma_lut(input_bit_depth).T
 
+        if self.img.dtype == np.uint8:
+            img_indices = self.img
+        elif self.img.dtype == np.uint16:
+            img_indices = self.img
+        else:
+            img_indices = np.clip(self.img, 0, input_max).astype(
+                np.uint8 if input_bit_depth == 8 else np.uint16
+            )
+
         # apply LUT
-        gamma_img = lut[self.img]
+        gamma_img = lut[cast(np.ndarray, img_indices)]
         if self.output_bit_depth == 8:
             if input_bit_depth != 8:
                 gamma_img = np.clip(
@@ -94,7 +111,7 @@ class GammaCorrection:
         else:
             raise ValueError("Unsupported output bit depth. Use 8, 16, or 32.")
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -108,7 +125,7 @@ class GammaCorrection:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> RGBImage:
         """
         Exceute Gamma Correction
         """

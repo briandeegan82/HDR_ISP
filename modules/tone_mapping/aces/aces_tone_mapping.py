@@ -8,6 +8,7 @@ Based on ACES 1.0 Output Transform
 import numpy as np
 import time
 from util.debug_utils import get_debug_logger
+from util.isp_types import Float32Image, PlatformConfig, SensorInfo, ToneMappingParams
 from util.utils import save_output_array
 import matplotlib
 matplotlib.use('Agg')
@@ -22,7 +23,13 @@ class ACESToneMapping:
     suitable for HDR to SDR conversion
     """
     
-    def __init__(self, img, platform, sensor_info, params):
+    def __init__(
+        self,
+        img: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        params: ToneMappingParams,
+    ) -> None:
         """
         Initialize ACES Tone Mapping
         
@@ -52,22 +59,22 @@ class ACESToneMapping:
         # Initialize debug logger
         self.logger = get_debug_logger("ACESToneMapping", config=self.platform)
     
-    def lin_to_log2(self, x, black_point=0.0):
+    def lin_to_log2(self, x: np.ndarray, black_point: float = 0.0) -> np.ndarray:
         """Convert linear values to log2 domain"""
         return np.log2(np.maximum(x, black_point + 1e-5))
     
-    def log2_to_lin(self, x):
+    def log2_to_lin(self, x: np.ndarray) -> np.ndarray:
         """Convert from log2 domain to linear"""
         return np.power(2.0, x)
     
-    def apply_cctf_decoding(self, x):
+    def apply_cctf_decoding(self, x: np.ndarray) -> np.ndarray:
         """
         Apply ACES CCTF (Color Component Transfer Function) decoding.
         Prepares linear values for RRT.
         """
         return np.maximum(x, 0.0)
     
-    def rrt(self, x):
+    def rrt(self, x: np.ndarray) -> np.ndarray:
         """
         Reference Rendering Transform (RRT)
         Maps ACES RGB to RRT color space for tone mapping
@@ -101,7 +108,7 @@ class ACESToneMapping:
         
         return x_tm
     
-    def _aces_tone_curve(self, x):
+    def _aces_tone_curve(self, x: np.ndarray) -> np.ndarray:
         """
         ACES filmic tone mapping curve (fitted approximation).
         Maps linear HDR values to [0, 1] SDR.
@@ -118,7 +125,7 @@ class ACESToneMapping:
         result = (x * (a * x + b)) / (x * (c * x + d) + e)
         return np.clip(result, 0.0, 1.0)
     
-    def apply_odt(self, x):
+    def apply_odt(self, x: np.ndarray) -> np.ndarray:
         """
         Output Device Transform (ODT)
         Maps RRT output to SDR display
@@ -148,7 +155,7 @@ class ACESToneMapping:
         
         return np.clip(x_odt, 0.0, 1.0)
     
-    def _apply_srgb_gamma(self, x, gamma=2.4):
+    def _apply_srgb_gamma(self, x: np.ndarray, gamma: float = 2.4) -> np.ndarray:
         """Apply sRGB-like gamma correction"""
         # Linear segment: x <= 0.0031308
         linear = x <= 0.0031308
@@ -163,7 +170,7 @@ class ACESToneMapping:
         
         return result
     
-    def _matmul(self, x, M):
+    def _matmul(self, x: np.ndarray, M: np.ndarray) -> np.ndarray:
         """
         Matrix multiplication for images
         Handles both single-channel (H, W) and multi-channel (H, W, C) images
@@ -186,7 +193,7 @@ class ACESToneMapping:
         
         return result
     
-    def normalize(self, image):
+    def normalize(self, image: np.ndarray) -> np.ndarray:
         """Normalize image to [0, 1] range"""
         img_min = np.min(image)
         img_max = np.max(image)
@@ -194,7 +201,7 @@ class ACESToneMapping:
             return (image - img_min) / (img_max - img_min)
         return image
     
-    def apply_tone_mapping(self):
+    def apply_tone_mapping(self) -> np.ndarray:
         """
         Apply ACES tone mapping to the input image
         """
@@ -210,7 +217,7 @@ class ACESToneMapping:
         
         return sdr_output
     
-    def plot_tone_curve(self):
+    def plot_tone_curve(self) -> None:
         """Plot and save the ACES tone mapping curve."""
         if not self.is_plot_curve:
             return
@@ -250,7 +257,7 @@ class ACESToneMapping:
         except Exception as e:
             self.logger.warning(f"  Failed to plot tone curve: {e}")
     
-    def save(self):
+    def save(self) -> None:
         """Save tone mapping output"""
         if self.is_save:
             save_output_array(
@@ -262,7 +269,7 @@ class ACESToneMapping:
                 self.sensor_info.get("bayer_pattern", "RGGB")
             )
     
-    def execute(self):
+    def execute(self) -> np.ndarray:
         """
         Execute ACES tone mapping
         

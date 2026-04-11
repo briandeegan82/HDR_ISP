@@ -10,8 +10,10 @@ import logging
 import time
 import re
 import numpy as np
+import cv2
 from util.utils import crop
 from util.utils import save_output_array_yuv, save_output_array
+from util.isp_types import PlatformConfig, RGBImage, ScaleConfig, SensorInfo
 
 # Import GPU utilities with fallback
 try:
@@ -23,27 +25,35 @@ try:
 except ImportError:
     GPU_UTILS_AVAILABLE = False
     # Fallback functions for CPU-only systems
-    def is_gpu_available():
+    def is_gpu_available() -> bool:
         return False
     
-    def should_use_gpu(img_size, operation):
+    def should_use_gpu(img_size: tuple[int, int], operation: str) -> bool:
         return False
     
-    def gpu_resize(img, size, interpolation, use_gpu=True):
-        import cv2
+    def gpu_resize(
+        img: np.ndarray, size: tuple[int, int], interpolation: int, use_gpu: bool = True
+    ) -> np.ndarray:
         return cv2.resize(img, size, interpolation=interpolation)
     
-    def to_umat(img, use_gpu=True):
+    def to_umat(img: np.ndarray, use_gpu: bool = True) -> np.ndarray:
         return img
     
-    def from_umat(umat_or_array):
+    def from_umat(umat_or_array: np.ndarray) -> np.ndarray:
         return umat_or_array
 
 
 class ScaleGPU:
     """GPU-accelerated scale color image to given size with CPU fallback."""
 
-    def __init__(self, img, platform, sensor_info, parm_sca, conv_std):
+    def __init__(
+        self,
+        img: RGBImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_sca: ScaleConfig,
+        conv_std: int,
+    ) -> None:
         self.img = img
         self.enable = parm_sca["is_enable"]
         self.sensor_info = sensor_info
@@ -63,7 +73,7 @@ class ScaleGPU:
         else:
             self._log.info("  Using CPU implementation for Image Scaling")
 
-    def apply_scaling(self):
+    def apply_scaling(self) -> RGBImage:
         """Execute GPU-accelerated scaling."""
 
         # check if no change in size
@@ -112,7 +122,9 @@ class ScaleGPU:
 
         return scaled_img
 
-    def scale_channel_gpu(self, ch_arr, interpolation):
+    def scale_channel_gpu(
+        self, ch_arr: np.ndarray, interpolation: int
+    ) -> np.ndarray:
         """
         GPU-accelerated channel scaling
         """
@@ -129,7 +141,9 @@ class ScaleGPU:
             self._log.warning(f"    GPU scaling failed, falling back to CPU: {e}")
             return self.scale_channel_cpu(ch_arr, interpolation)
 
-    def scale_channel_cpu(self, ch_arr, interpolation):
+    def scale_channel_cpu(
+        self, ch_arr: np.ndarray, interpolation: int
+    ) -> np.ndarray:
         """
         CPU implementation of channel scaling
         """
@@ -142,13 +156,13 @@ class ScaleGPU:
         
         return scaled_ch
 
-    def get_scaling_params(self):
+    def get_scaling_params(self) -> None:
         """Save parameters as instance attributes."""
         self.is_debug = self.parm_sca["is_debug"]
         self.old_size = (self.sensor_info["height"], self.sensor_info["width"])
         self.new_size = (self.parm_sca["new_height"], self.parm_sca["new_width"])
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -177,7 +191,7 @@ class ScaleGPU:
                     self.conv_std,
                 )
 
-    def execute(self):
+    def execute(self) -> RGBImage:
         """
         Applying scaling to input image
         """

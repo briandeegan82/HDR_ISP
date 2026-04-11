@@ -87,6 +87,14 @@ class AutoWhiteBalance:
             r_channel = self.raw[1::2, 0::2]
             gr_channel = self.raw[1::2, 1::2]
 
+        # Odd width or height: rows/cols from 0::2 vs 1::2 differ by one; crop to shared CFA size.
+        _shapes = (r_channel.shape, gr_channel.shape, gb_channel.shape, b_channel.shape)
+        _mh, _mw = min(s[0] for s in _shapes), min(s[1] for s in _shapes)
+        r_channel = r_channel[:_mh, :_mw]
+        gr_channel = gr_channel[:_mh, :_mw]
+        gb_channel = gb_channel[:_mh, :_mw]
+        b_channel = b_channel[:_mh, :_mw]
+
         g_channel = (gr_channel + gb_channel) / 2
         bayer_channels = np.dstack((r_channel, g_channel, b_channel))
         # print(bayer_channels.shape)
@@ -163,14 +171,11 @@ class AutoWhiteBalance:
         """
         self.logger.info(f"Auto White balancing = {self.enable}")
 
-        # This module is enabled only when white balance 'enable' and 'auto' parameter both
-        # are true.
-        if self.enable is True:
+        if self.enable:
             start = time.time()
             rgain, bgain = self.determine_white_balance_gain()
             self.logger.info(f"  Execution time: {time.time() - start:.3f}s")
-            return np.array([rgain, bgain])
-        else:
-            rgain, bgain = self.parm_wbc["r_gain"], self.parm_wbc["b_gain"]
-            self.logger.info(f"  Using default gains: {rgain}, {bgain}")
-        return None
+            return np.array([rgain, bgain], dtype=np.float64)
+        rgain, bgain = self.parm_wbc["r_gain"], self.parm_wbc["b_gain"]
+        self.logger.info(f"  AWB off — using manual white_balance r_gain/b_gain: {rgain}, {bgain}")
+        return np.array([float(rgain), float(bgain)], dtype=np.float64)

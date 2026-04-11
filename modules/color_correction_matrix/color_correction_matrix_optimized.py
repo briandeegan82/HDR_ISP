@@ -9,13 +9,20 @@ Author: 10xEngineers Pvt Ltd
 import time
 import numpy as np
 
+from util.isp_types import ColorCorrectionMatrixConfig, PlatformConfig, RGBImage, SensorInfo, UInt16Image
 from util.utils import save_output_array
 
 
 class ColorCorrectionMatrixOptimized:
     "Apply the color correction 3x3 matrix with optimized vectorized operations"
 
-    def __init__(self, img, platform, sensor_info, parm_ccm):
+    def __init__(
+        self,
+        img: RGBImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_ccm: ColorCorrectionMatrixConfig,
+    ) -> None:
         self.img = img
         self.enable = parm_ccm["is_enable"]
         self.sensor_info = sensor_info
@@ -27,7 +34,7 @@ class ColorCorrectionMatrixOptimized:
         # Initialize debug logger
         self.logger = get_debug_logger("ColorCorrectionMatrixOptimized", config=self.platform)
 
-    def apply_ccm_optimized(self):
+    def apply_ccm_optimized(self) -> UInt16Image:
         """
         Apply CCM Params with optimized vectorized operations
         """
@@ -36,12 +43,12 @@ class ColorCorrectionMatrixOptimized:
         r_2 = np.array(self.parm_ccm["corrected_green"], dtype=np.float32)
         r_3 = np.array(self.parm_ccm["corrected_blue"], dtype=np.float32)
 
-        self.ccm_mat = np.float32([r_1, r_2, r_3])
+        self.ccm_mat = np.array([r_1, r_2, r_3], dtype=np.float32)
 
         # Pipeline convention: demosaic outputs 16-bit RGB
         input_bit_depth = self.sensor_info.get("pipeline_rgb_bit_depth", 16)
         input_max = 2**input_bit_depth - 1
-        self.img = np.float32(self.img) / input_max
+        self.img = self.img.astype(np.float32) / input_max
         # OPTIMIZATION: Use efficient reshape and matrix multiplication
         # convert to nx3 - use reshape with -1 for automatic dimension calculation
         img1 = self.img.reshape(-1, 3)
@@ -58,10 +65,10 @@ class ColorCorrectionMatrixOptimized:
         # OPTIMIZATION: Use efficient reshape and conversion
         # Gamma expects 16-bit input
         out = out.reshape(self.img.shape)
-        out = np.uint16(out * input_max)
+        out = (out * input_max).astype(np.uint16)
         return out
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -75,7 +82,7 @@ class ColorCorrectionMatrixOptimized:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> RGBImage | UInt16Image:
         """Execute ccm if enabled."""
         self.logger.info(f"Color Correction Matrix = {self.enable}")
 

@@ -7,12 +7,16 @@ where r is normalized distance from center (0 at center, 1 at corners).
 Operates on raw Bayer before demosaic; preserves linearity.
 """
 import time
+from typing import cast
 import numpy as np
 from util.debug_utils import get_debug_logger
+from util.isp_types import LensShadingCorrectionConfig, PlatformConfig, RawBayerImage, SensorInfo
 from util.utils import save_output_array
 
 
-def _build_radial_gain_map(height, width, k1, k2):
+def _build_radial_gain_map(
+    height: int, width: int, k1: float, k2: float
+) -> np.ndarray:
     """
     Build 2D gain map from radial polynomial: gain(r) = 1 + k1*r² + k2*r⁴.
     r = distance from center / max_distance, so r in [0, 1] at corners.
@@ -35,7 +39,13 @@ class LensShadingCorrection:
     Uses radial polynomial gain per channel: gain(r) = 1 + k1*r² + k2*r⁴.
     """
 
-    def __init__(self, img, platform, sensor_info, parm_lsc):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_lsc: LensShadingCorrectionConfig,
+    ) -> None:
         self.img = np.asarray(img, dtype=np.float32)
         self.enable = parm_lsc.get("is_enable", True)
         self.is_save = parm_lsc.get("is_save", False)
@@ -64,7 +74,7 @@ class LensShadingCorrection:
             hdr_bits = 16
         self.output_max = 2**hdr_bits - 1
 
-    def _build_gain_maps(self):
+    def _build_gain_maps(self) -> None:
         """Build per-channel gain maps."""
         h, w = self.height, self.width
         self._gain_r = _build_radial_gain_map(h, w, self.r_k1, self.r_k2)
@@ -72,7 +82,7 @@ class LensShadingCorrection:
         self._gain_gb = _build_radial_gain_map(h, w, self.gb_k1, self.gb_k2)
         self._gain_b = _build_radial_gain_map(h, w, self.b_k1, self.b_k2)
 
-    def _apply_lsc(self):
+    def _apply_lsc(self) -> np.ndarray:
         """Apply per-channel gain to Bayer."""
         self._build_gain_maps()
         out = self.img.copy()
@@ -103,14 +113,17 @@ class LensShadingCorrection:
         out = np.clip(out, 0, self.output_max)
         return out
 
-    def execute(self):
+    def execute(self) -> RawBayerImage:
         """Execute lens shading correction."""
         self.logger.info(f"Lens Shading Correction = {self.enable}")
 
         if not self.enable:
-            return self.img.astype(
-                np.uint32 if self.output_max > 65535 else np.uint16,
-                copy=False,
+            return cast(
+                RawBayerImage,
+                self.img.astype(
+                    np.uint32 if self.output_max > 65535 else np.uint16,
+                    copy=False,
+                ),
             )
 
         start = time.time()

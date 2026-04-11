@@ -9,6 +9,7 @@ Author: 10xEngineers Pvt Ltd
 import time
 import numpy as np
 
+from util.isp_types import AWBGains, PlatformConfig, RawBayerImage, SensorInfo, UInt32Image, WhiteBalanceConfig
 from util.utils import save_output_array
 
 
@@ -17,7 +18,14 @@ class WhiteBalanceOptimized:
     Optimized White balance Module with vectorized operations
     """
 
-    def __init__(self, img, platform, sensor_info, parm_wbc, awb_gains):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_wbc: WhiteBalanceConfig,
+        awb_gains: AWBGains,
+    ) -> None:
         """
         Class Constructor
         """
@@ -36,14 +44,14 @@ class WhiteBalanceOptimized:
         # Initialize debug logger
         self.logger = get_debug_logger("WhiteBalanceOptimized", config=self.platform)
 
-    def apply_wb_parameters_optimized(self):
+    def apply_wb_parameters_optimized(self) -> UInt32Image:
         """
         Applies white balance gains from config file to raw images with optimized vectorized operations
         """
         # get config params
         redgain = self.awb_gains[0]
         bluegain = self.awb_gains[1]
-        self.raw = np.float32(self.img)
+        self.raw = self.img.astype(np.float32)
 
         if self.is_debug:
             self.logger.info(f"   - WB  - red gain : {redgain}")
@@ -74,11 +82,11 @@ class WhiteBalanceOptimized:
             # OPTIMIZATION: Use in-place clipping for efficiency
             np.clip(self.raw, 0, max_value, out=self.raw)
         
-        raw_whitebal = np.uint32(self.raw)
+        raw_whitebal = self.raw.astype(np.uint32)
 
         return raw_whitebal
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -92,7 +100,7 @@ class WhiteBalanceOptimized:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> RawBayerImage | UInt32Image:
         """
         Execute White Balance Module
         """

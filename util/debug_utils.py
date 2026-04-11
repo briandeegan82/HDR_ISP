@@ -6,6 +6,7 @@ Debug utilities for conditional logging and debug output
 import os
 import logging
 import time
+from collections.abc import Mapping
 from typing import Optional, Callable, Any
 
 class DebugLogger:
@@ -13,7 +14,12 @@ class DebugLogger:
     Conditional debug logger that can be enabled/disabled via config file
     """
     
-    def __init__(self, name: str = None, default_level: str = "INFO", config: dict = None):
+    def __init__(
+        self,
+        name: str = None,
+        default_level: str = "INFO",
+        config: Mapping[str, Any] | None = None,
+    ):
         """
         Initialize debug logger
         
@@ -133,7 +139,9 @@ class DebugLogger:
         if self._logger:
             self._logger.critical(message)
 
-def get_debug_logger(name: str = None, config: dict = None) -> DebugLogger:
+def get_debug_logger(
+    name: str = None, config: Mapping[str, Any] | None = None
+) -> DebugLogger:
     """
     Get a debug logger instance
     

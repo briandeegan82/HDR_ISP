@@ -9,6 +9,8 @@ Author: Brian Deegan (via AI)
 import numpy as np
 from scipy.ndimage import convolve, correlate
 
+from util.isp_types import DemosaicMasks, RawBayerImage
+
 
 class LMMSEDemosaic:
     """
@@ -23,7 +25,7 @@ class LMMSEDemosaic:
     This produces excellent quality with optimal MSE properties.
     """
 
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         self.height, self.width = self.img.shape
@@ -32,7 +34,7 @@ class LMMSEDemosaic:
         self.window_size = 5  # Local estimation window
         self.epsilon = 1e-6   # Small constant for numerical stability
         
-    def _estimate_local_mean(self, channel, mask):
+    def _estimate_local_mean(self, channel: np.ndarray, mask: np.ndarray) -> np.ndarray:
         """
         Estimate local mean of a channel using only known values.
         """
@@ -48,7 +50,9 @@ class LMMSEDemosaic:
         mean = sum_vals / (count_vals + self.epsilon)
         return mean
     
-    def _estimate_local_variance(self, channel, mask, mean):
+    def _estimate_local_variance(
+        self, channel: np.ndarray, mask: np.ndarray, mean: np.ndarray
+    ) -> np.ndarray:
         """
         Estimate local variance using known values.
         """
@@ -65,7 +69,15 @@ class LMMSEDemosaic:
         variance = sum_diff_sq / (count_vals + self.epsilon)
         return variance
     
-    def _estimate_covariance(self, channel1, mask1, channel2, mask2, mean1, mean2):
+    def _estimate_covariance(
+        self,
+        channel1: np.ndarray,
+        mask1: np.ndarray,
+        channel2: np.ndarray,
+        mask2: np.ndarray,
+        mean1: np.ndarray,
+        mean2: np.ndarray,
+    ) -> np.ndarray:
         """
         Estimate covariance between two channels.
         """
@@ -87,7 +99,13 @@ class LMMSEDemosaic:
         covariance = sum_cov / (count_vals + self.epsilon)
         return covariance
     
-    def _lmmse_interpolate(self, target_channel, target_mask, ref_channel, ref_mask):
+    def _lmmse_interpolate(
+        self,
+        target_channel: np.ndarray,
+        target_mask: np.ndarray,
+        ref_channel: np.ndarray,
+        ref_mask: np.ndarray,
+    ) -> np.ndarray:
         """
         LMMSE interpolation of target channel using reference channel.
         
@@ -112,7 +130,7 @@ class LMMSEDemosaic:
         
         return prediction
     
-    def _interpolate_green_at_red_blue(self):
+    def _interpolate_green_at_red_blue(self) -> np.ndarray:
         """
         Interpolate green at red and blue locations using LMMSE.
         Uses directional interpolation combined with LMMSE refinement.
@@ -160,7 +178,7 @@ class LMMSEDemosaic:
         
         return G
     
-    def _interpolate_red_blue(self, G):
+    def _interpolate_red_blue(self, G: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Interpolate R and B using LMMSE with green as reference.
         """
@@ -186,7 +204,7 @@ class LMMSEDemosaic:
         
         return R, B
     
-    def apply_lmmse(self):
+    def apply_lmmse(self) -> np.ndarray:
         """
         Apply LMMSE demosaicing algorithm.
         
@@ -212,7 +230,7 @@ class LMMSEDemosaicOptimized:
     Uses larger windows and more sophisticated correlation modeling.
     """
     
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         
@@ -220,7 +238,9 @@ class LMMSEDemosaicOptimized:
         self.window_size = 7  # Larger window for better statistics
         self.epsilon = 1e-6
         
-    def _compute_local_statistics(self, channel, mask):
+    def _compute_local_statistics(
+        self, channel: np.ndarray, mask: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute comprehensive local statistics efficiently.
         """
@@ -239,7 +259,15 @@ class LMMSEDemosaicOptimized:
         
         return mean, variance
     
-    def _compute_cross_correlation(self, ch1, mask1, ch2, mask2, mean1, mean2):
+    def _compute_cross_correlation(
+        self,
+        ch1: np.ndarray,
+        mask1: np.ndarray,
+        ch2: np.ndarray,
+        mask2: np.ndarray,
+        mean1: np.ndarray,
+        mean2: np.ndarray,
+    ) -> np.ndarray:
         """
         Compute cross-correlation between two channels.
         """
@@ -258,7 +286,13 @@ class LMMSEDemosaicOptimized:
         correlation = sum_product / (count_vals + self.epsilon)
         return correlation
     
-    def _wiener_filter(self, target, target_mask, reference, ref_mask):
+    def _wiener_filter(
+        self,
+        target: np.ndarray,
+        target_mask: np.ndarray,
+        reference: np.ndarray,
+        ref_mask: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Apply Wiener filter for optimal LMMSE estimation.
         
@@ -285,7 +319,7 @@ class LMMSEDemosaicOptimized:
         
         return estimate, confidence
     
-    def _interpolate_green_adaptive(self):
+    def _interpolate_green_adaptive(self) -> np.ndarray:
         """
         Adaptive green interpolation using LMMSE with confidence weighting.
         """
@@ -341,7 +375,7 @@ class LMMSEDemosaicOptimized:
         
         return G
     
-    def apply_lmmse_optimized(self):
+    def apply_lmmse_optimized(self) -> np.ndarray:
         """
         Apply optimized LMMSE with enhanced statistical modeling.
         """
@@ -376,13 +410,15 @@ class LMMSEDemosaicFast:
     Trades some quality for speed while maintaining LMMSE principles.
     """
     
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         self.window_size = 3  # Smaller window for speed
         self.epsilon = 1e-6
     
-    def _fast_local_mean_var(self, channel, mask):
+    def _fast_local_mean_var(
+        self, channel: np.ndarray, mask: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Fast local statistics using box filter."""
         kernel = np.ones((self.window_size, self.window_size), dtype=np.float32)
         
@@ -397,7 +433,13 @@ class LMMSEDemosaicFast:
         
         return mean, variance
     
-    def _fast_lmmse(self, target, target_mask, ref, ref_mask):
+    def _fast_lmmse(
+        self,
+        target: np.ndarray,
+        target_mask: np.ndarray,
+        ref: np.ndarray,
+        ref_mask: np.ndarray,
+    ) -> np.ndarray:
         """Fast LMMSE using simplified covariance estimation."""
         mean_t, var_t = self._fast_local_mean_var(target, target_mask)
         mean_r, var_r = self._fast_local_mean_var(ref, ref_mask)
@@ -419,7 +461,7 @@ class LMMSEDemosaicFast:
         
         return estimate
     
-    def apply_lmmse_fast(self):
+    def apply_lmmse_fast(self) -> np.ndarray:
         """Fast LMMSE demosaicing."""
         raw = self.img
         mask_r, mask_g, mask_b = self.masks

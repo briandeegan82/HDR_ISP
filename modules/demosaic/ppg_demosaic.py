@@ -9,6 +9,8 @@ Author: Brian Deegan (via AI)
 import numpy as np
 from scipy.ndimage import convolve
 
+from util.isp_types import DemosaicMasks, RawBayerImage
+
 
 class PPGDemosaic:
     """
@@ -23,12 +25,12 @@ class PPGDemosaic:
     This produces excellent quality with good edge preservation.
     """
 
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         self.height, self.width = self.img.shape
         
-    def _compute_laplacian(self, channel):
+    def _compute_laplacian(self, channel: np.ndarray) -> np.ndarray:
         """
         Compute Laplacian for edge detection.
         """
@@ -37,7 +39,7 @@ class PPGDemosaic:
                                       [0, 1, 0]], dtype=np.float32)
         return convolve(channel, laplacian_kernel, mode='reflect')
     
-    def _interpolate_green_initial(self):
+    def _interpolate_green_initial(self) -> np.ndarray:
         """
         Initial green interpolation using directional gradients.
         This is similar to Hamilton-Adams but serves as first estimate.
@@ -87,7 +89,7 @@ class PPGDemosaic:
         
         return G
     
-    def _refine_green(self, G_initial):
+    def _refine_green(self, G_initial: np.ndarray) -> np.ndarray:
         """
         Refine green channel using pattern-based correction.
         This is the key PPG step - iterative refinement.
@@ -125,7 +127,7 @@ class PPGDemosaic:
         
         return G
     
-    def _interpolate_red_blue(self, G):
+    def _interpolate_red_blue(self, G: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Interpolate R and B using the refined green channel.
         Uses color difference method with the improved green.
@@ -189,7 +191,7 @@ class PPGDemosaic:
         
         return R, B
     
-    def apply_ppg(self):
+    def apply_ppg(self) -> np.ndarray:
         """
         Apply PPG demosaicing algorithm.
         
@@ -218,12 +220,14 @@ class PPGDemosaicOptimized:
     Uses multiple iterations and better gradient estimation.
     """
     
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         self.num_iterations = 2  # Number of refinement iterations
         
-    def _interpolate_green_directional(self, raw, mask_g):
+    def _interpolate_green_directional(
+        self, raw: np.ndarray, mask_g: np.ndarray
+    ) -> np.ndarray:
         """
         Interpolate green with enhanced directional selection.
         """
@@ -271,7 +275,14 @@ class PPGDemosaicOptimized:
         
         return G_interp
     
-    def _refine_green_iterative(self, G, raw, mask_r, mask_g, mask_b):
+    def _refine_green_iterative(
+        self,
+        G: np.ndarray,
+        raw: np.ndarray,
+        mask_r: np.ndarray,
+        mask_g: np.ndarray,
+        mask_b: np.ndarray,
+    ) -> np.ndarray:
         """
         Iteratively refine green channel using pattern information.
         Multiple iterations improve quality.
@@ -313,7 +324,7 @@ class PPGDemosaicOptimized:
         
         return G
     
-    def apply_ppg_optimized(self):
+    def apply_ppg_optimized(self) -> np.ndarray:
         """
         Apply optimized PPG with multiple refinement iterations.
         """

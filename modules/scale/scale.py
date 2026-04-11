@@ -14,6 +14,7 @@ GPU acceleration is now available for systems with CUDA support.
 import time
 import re
 import numpy as np
+from util.isp_types import ColorSpaceConversionConfig, PlatformConfig, RGBImage, ScaleConfig, SensorInfo
 from util.utils import crop
 
 from util.utils import save_output_array_yuv, save_output_array
@@ -31,7 +32,14 @@ except ImportError:
 class Scale:
     """Scale color image to given size with GPU acceleration."""
 
-    def __init__(self, img, platform, sensor_info, parm_sca, conv_std):
+    def __init__(
+        self,
+        img: RGBImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_sca: ScaleConfig,
+        conv_std: int,
+    ) -> None:
         self.img = img
         self.enable = parm_sca["is_enable"]
         self.sensor_info = sensor_info
@@ -53,7 +61,7 @@ class Scale:
             except ImportError:
                 self.use_gpu = False
 
-    def apply_scaling(self):
+    def apply_scaling(self) -> RGBImage:
         """Execute scaling with GPU acceleration if available."""
 
         # check if no change in size
@@ -101,13 +109,13 @@ class Scale:
 
         return scaled_img
 
-    def get_scaling_params(self):
+    def get_scaling_params(self) -> None:
         """Save parameters as instance attributes."""
         self.is_debug = self.parm_sca["is_debug"]
         self.old_size = (self.sensor_info["height"], self.sensor_info["width"])
         self.new_size = (self.parm_sca["new_height"], self.parm_sca["new_width"])
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -136,7 +144,7 @@ class Scale:
                     self.conv_std,
                 )
 
-    def execute(self):
+    def execute(self) -> RGBImage:
         """
         Applying scaling to input image
         """
@@ -157,8 +165,14 @@ class Scale:
 class Scale2D:
     """Scale 2D image to given size."""
 
-    def __init__(self, single_channel, sensor_info, parm_sca, platform=None):
-        self.single_channel = np.float32(single_channel)
+    def __init__(
+        self,
+        single_channel: np.ndarray,
+        sensor_info: SensorInfo,
+        parm_sca: ScaleConfig,
+        platform: PlatformConfig | None = None,
+    ) -> None:
+        self.single_channel = np.asarray(single_channel, dtype=np.float32)
         self.sensor_info = sensor_info
         self.parm_sca = parm_sca
         self.platform = platform or {}
@@ -324,7 +338,7 @@ class Scale2D:
         scale_info = size_obj.execute()
         return scale_info
 
-    def execute(self):
+    def execute(self) -> np.ndarray:
         """Execute scaling."""
 
         if self.is_hardware:
@@ -337,7 +351,7 @@ class Scale2D:
             self.logger.info(f"   - Shape of scaled image for a single channel = {self.single_channel.shape}")
         return self.single_channel
 
-    def hardware_indp_scaling(self):
+    def hardware_indp_scaling(self) -> np.ndarray:
         """Execute hardware independent scaling."""
         if self.algo == "Nearest_Neighbor":
             if self.is_debug:
@@ -362,7 +376,7 @@ class Scale2D:
             nn_obj = NN(self.single_channel, self.new_size)
             return nn_obj.scale_nearest_neighbor()
 
-    def get_scaling_params(self):
+    def get_scaling_params(self) -> None:
         """Save parameters as instance attributes."""
         self.old_size = (self.sensor_info["height"], self.sensor_info["width"])
         self.new_size = (self.parm_sca["new_height"], self.parm_sca["new_width"])
@@ -397,7 +411,7 @@ class OUT1080x1920:
     steps above.
     """
 
-    def __init__(self, new_size):
+    def __init__(self, new_size: tuple[int, int]) -> None:
         self.new_size = new_size
 
         if self.new_size == (720, 1280):
@@ -412,7 +426,7 @@ class OUT1080x1920:
         else:
             self.scale_list = [[1, 0, None], [1, 0, None]]
 
-    def execute(self):
+    def execute(self) -> list[list[object | None]]:
         """Get crop/scale factors to the corresponding input size"""
         return self.scale_list
 
@@ -421,7 +435,7 @@ class OUT1080x1920:
 class OUT1536x2592:
     """Same as class OUT_1080x1920"""
 
-    def __init__(self, new_size):
+    def __init__(self, new_size: tuple[int, int]) -> None:
         self.new_size = new_size
 
         if self.new_size == (1080, 1920):
@@ -439,7 +453,7 @@ class OUT1536x2592:
         else:
             self.scale_list = [[1, 0, None], [1, 0, None]]
 
-    def execute(self):
+    def execute(self) -> list[list[object | None]]:
         """Get crop/scale factors to the corresponding input size"""
         return self.scale_list
 
@@ -448,7 +462,7 @@ class OUT1536x2592:
 class OUT1944x2592:
     """Same as OUT_1080x1920"""
 
-    def __init__(self, new_size):
+    def __init__(self, new_size: tuple[int, int]) -> None:
         self.new_size = new_size
 
         if self.new_size == (1440, 2560):
@@ -472,6 +486,6 @@ class OUT1944x2592:
         else:
             self.scale_list = [[1, 0, None], [1, 0, None]]
 
-    def execute(self):
+    def execute(self) -> list[list[object | None]]:
         """Get crop/scale factors to the corresponding input size"""
         return self.scale_list

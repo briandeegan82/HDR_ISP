@@ -2,8 +2,10 @@ import numpy as np
 from scipy.ndimage import gaussian_filter, zoom
 from util.utils import save_output_array
 import time
+from typing import cast
 
 from util.debug_utils import get_debug_logger
+from util.isp_types import Float32Image, PlatformConfig, SensorInfo, ToneMappingParams
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -20,7 +22,13 @@ class HDRDurandToneMapping:
     HDR Durand Tone Mapping Algorithm Implementation with GPU acceleration
     """
     
-    def __init__(self, img, platform, sensor_info, params):
+    def __init__(
+        self,
+        img: Float32Image | np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        params: ToneMappingParams,
+    ) -> None:
         self.img = img.copy()
         self.is_enable = params.get("is_enable", True)
         self.is_save = params.get("is_save", False)
@@ -46,19 +54,23 @@ class HDRDurandToneMapping:
             except ImportError:
                 self.use_gpu = False
     
-    def normalize(self, image):
+    def normalize(self, image: np.ndarray) -> np.ndarray:
         """ Normalize image to [0,1] range."""
         return (image - np.min(image)) / (np.max(image) - np.min(image))
     
-    def fast_bilateral_filter(self, image):
+    def fast_bilateral_filter(self, image: np.ndarray) -> np.ndarray:
         """
         Approximate bilateral filtering using a downsampled approach.
         """
-        small_img = zoom(image, 1 / self.downsample_factor, order=1)
-        small_filtered = self.bilateral_filter(small_img, self.sigma_color, self.sigma_space)
-        return zoom(small_filtered, self.downsample_factor, order=1)
+        small_img = cast(np.ndarray, zoom(image, 1 / self.downsample_factor, order=1))
+        small_filtered = self.bilateral_filter(
+            small_img, self.sigma_color, self.sigma_space
+        )
+        return cast(np.ndarray, zoom(small_filtered, self.downsample_factor, order=1))
     
-    def bilateral_filter(self, image, sigma_color, sigma_space):
+    def bilateral_filter(
+        self, image: np.ndarray, sigma_color: float, sigma_space: float
+    ) -> np.ndarray:
         """
         Custom bilateral filter using Gaussian filtering approximation.
         """
@@ -67,7 +79,7 @@ class HDRDurandToneMapping:
         range_kernel = np.exp(-0.5 * (intensity_diff / sigma_color) ** 2)
         return spatial_filtered + range_kernel * intensity_diff
     
-    def apply_tone_mapping(self):
+    def apply_tone_mapping(self) -> np.ndarray:
         """ Durand's tone mapping implementation. """
         # Convert to log domain
         epsilon = 1e-6  # Small value to avoid log(0)
@@ -95,7 +107,7 @@ class HDRDurandToneMapping:
         output_luminance = (output_luminance - np.min(output_luminance)) / (np.max(output_luminance) - np.min(output_luminance))
         return output_luminance
 
-    def plot_tone_curve(self):
+    def plot_tone_curve(self) -> None:
         """Plot and save a representative Durand tone mapping curve.
         
         Note: Durand is a local/adaptive tone mapper, so the actual mapping varies per pixel.
@@ -162,12 +174,12 @@ class HDRDurandToneMapping:
             self.logger.warning(f"  Failed to plot tone curve: {e}")
 
     
-    def save(self):
+    def save(self) -> None:
         if self.is_save:
             save_output_array(self.platform["in_file"], self.img, "Out_hdr_durand_", 
                               self.platform, self.sensor_info["bit_depth"], self.sensor_info["bayer_pattern"])
    
-    def execute(self):
+    def execute(self) -> np.ndarray:
         if self.is_enable is True:
             self.logger.info("Executing HDR Durand Tone Mapping...")
             start = time.time()
@@ -178,15 +190,23 @@ class HDRDurandToneMapping:
             # Use GPU-accelerated version if available and beneficial
             if self.use_gpu and GPU_VERSION_AVAILABLE:
                 try:
-                    gpu_hdr = HDRDurandToneMappingGPU(self.img, self.platform, self.sensor_info, {
-                        "is_enable": self.is_enable,
-                        "is_save": self.is_save,
-                        "is_debug": self.is_debug,
-                        "sigma_space": self.sigma_space,
-                        "sigma_color": self.sigma_color,
-                        "contrast_factor": self.contrast_factor,
-                        "downsample_factor": self.downsample_factor
-                    })
+                    gpu_hdr = HDRDurandToneMappingGPU(
+                        self.img,
+                        self.platform,
+                        self.sensor_info,
+                        cast(
+                            ToneMappingParams,
+                            {
+                                "is_enable": self.is_enable,
+                                "is_save": self.is_save,
+                                "is_debug": self.is_debug,
+                                "sigma_space": self.sigma_space,
+                                "sigma_color": self.sigma_color,
+                                "contrast_factor": self.contrast_factor,
+                                "downsample_factor": self.downsample_factor,
+                            },
+                        ),
+                    )
                     self.img = gpu_hdr.execute()
                 except Exception as e:
                     self.logger.info(f"  GPU HDR failed, falling back to CPU: {e}")

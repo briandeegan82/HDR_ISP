@@ -6,6 +6,9 @@ Author: 10xEngineers
 """
 import time
 import numpy as np
+from typing import Literal, cast
+
+from util.isp_types import DemosaicConfig, DemosaicMasks, PlatformConfig, RawBayerImage, SensorInfo, UInt16Image
 from util.utils import save_output_array
 from util.debug_utils import get_debug_logger, is_debug_enabled
 from modules.demosaic.malvar_he_cutler import Malvar as MAL
@@ -57,7 +60,13 @@ from modules.demosaic.ahd_demosaic import (
 class Demosaic:
     "CFA Interpolation"
 
-    def __init__(self, img, platform, sensor_info, parm_dga):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_dga: DemosaicConfig,
+    ) -> None:
         self.img = img
         self.bayer = sensor_info["bayer_pattern"]
         # self.bit_depth = sensor_info["output_bit_depth"]
@@ -69,7 +78,7 @@ class Demosaic:
         # Initialize debug logger
         self.logger = get_debug_logger("Demosaic", config=self.platform)
 
-    def masks_cfa_bayer(self):
+    def masks_cfa_bayer(self) -> DemosaicMasks:
         """
         Generating masks for the given bayer pattern
         """
@@ -92,9 +101,9 @@ class Demosaic:
         # g_channel and b_channel with True at corresponding value
         # For example in rggb pattern, the r_channel mask would then be
         # [ [ True, False, True, False], [ False, False, False, False]]
-        return tuple(channels[c] for c in "rgb")
+        return cast(DemosaicMasks, tuple(channels[c] for c in "rgb"))
 
-    def apply_cfa(self, algorithm="malvar"):
+    def apply_cfa(self, algorithm: str = "malvar") -> UInt16Image:
         """
         Demosaicing the given raw image using given algorithm
         
@@ -180,10 +189,10 @@ class Demosaic:
         output_bit_depth = self.sensor_info.get("pipeline_rgb_bit_depth", 16)
         output_max = 2**output_bit_depth - 1
         demos_out = np.clip(demos_out, 0, output_max)
-        demos_out = np.uint16(demos_out)
-        return demos_out
+        demos_out = demos_out.astype(np.uint16)
+        return cast(UInt16Image, demos_out)
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -197,7 +206,7 @@ class Demosaic:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self, algorithm=None):
+    def execute(self, algorithm: str | None = None) -> UInt16Image:
         """
         Applying demosaicing to bayer image
         

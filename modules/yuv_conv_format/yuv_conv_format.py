@@ -16,13 +16,20 @@ import time
 import re
 import numpy as np
 
+from util.isp_types import PlatformConfig, SensorInfo, UInt8Image, YUVConversionFormatConfig
 from util.utils import save_output_array
 
 
 class YUVConvFormat:
     "YUV Conversion Formats - 444, 442"
 
-    def __init__(self, img, platform, sensor_info, parm_yuv):  # parm_csc):
+    def __init__(
+        self,
+        img: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_yuv: YUVConversionFormatConfig,
+    ) -> None:  # parm_csc):
         self.img = img
         self.shape = img.shape
         self.enable = parm_yuv["is_enable"]
@@ -35,7 +42,7 @@ class YUVConvFormat:
         # Initialize debug logger
         self.logger = get_debug_logger("YUVConvFormat", config=self.platform)
 
-    def convert2yuv_format(self):
+    def convert2yuv_format(self) -> UInt8Image:
         """Execute YUV conversion."""
         conv_type = self.param_yuv["conv_type"]
 
@@ -54,13 +61,12 @@ class YUVConvFormat:
 
         out_path = "./out_frames/out_" + self.in_file + ".yuv"
 
-        raw_wb = open(out_path, "wb")
-        yuv.flatten().tofile(raw_wb)
-        raw_wb.close()
+        with open(out_path, "wb") as raw_wb:
+            yuv.flatten().tofile(raw_wb)
 
         return yuv.flatten()
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -84,7 +90,7 @@ class YUVConvFormat:
             # restore the original save format
             self.platform["save_format"] = save_format
 
-    def execute(self):
+    def execute(self) -> UInt8Image:
         """Execute YUV conversion if enabled."""
         self.logger.info(
             f"YUV conversion format {self.param_yuv['conv_type']} = {self.enable}"

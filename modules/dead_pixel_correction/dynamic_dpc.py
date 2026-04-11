@@ -7,8 +7,11 @@ Author: 10xEngineers Pvt Ltd
 ------------------------------------------------------------
 """
 
+from typing import cast
+
 import numpy as np
 from util.debug_utils import get_debug_logger
+from util.isp_types import DeadPixelCorrectionConfig, PlatformConfig, RawBayerImage, SensorInfo
 from scipy.ndimage import maximum_filter, minimum_filter, correlate
 
 
@@ -18,7 +21,13 @@ class DynamicDPC:
     dead pixels and apply correction using the neighboring pixels.
     """
 
-    def __init__(self, img, sensor_info, parm_dpc, platform=None):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        sensor_info: SensorInfo,
+        parm_dpc: DeadPixelCorrectionConfig,
+        platform: PlatformConfig | None = None,
+    ) -> None:
         self.img = img
         self.sensor_info = sensor_info
         self.bpp = self.sensor_info.get("hdr_bit_depth", self.sensor_info["bit_depth"])
@@ -26,7 +35,7 @@ class DynamicDPC:
         self.is_debug = parm_dpc["is_debug"]
         self.logger = get_debug_logger("DeadPixelCorrection", config=platform or {})
 
-    def dynamic_dpc(self):
+    def dynamic_dpc(self) -> RawBayerImage:
         """This function detects and corrects Dead pixels using numpy
         array opertaions."""
 
@@ -316,4 +325,4 @@ class DynamicDPC:
         if self.is_debug:
             self.logger.info(f"   - Number of corrected pixels = {np.count_nonzero(detection_mask)}")
             self.logger.info(f"   - Threshold = {self.threshold}")
-        return self.img
+        return cast(RawBayerImage, self.img)

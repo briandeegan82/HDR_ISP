@@ -8,6 +8,8 @@ Author: Brian Deegan (via AI)
 import numpy as np
 from scipy.ndimage import convolve, median_filter
 
+from util.isp_types import DemosaicMasks, RawBayerImage
+
 
 class AHDDemosaic:
     """
@@ -22,13 +24,13 @@ class AHDDemosaic:
     This produces excellent quality with superior artifact reduction.
     """
 
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         self.height, self.width = self.img.shape
         self.epsilon = 1e-6
         
-    def _interpolate_green_horizontal(self):
+    def _interpolate_green_horizontal(self) -> np.ndarray:
         """
         Interpolate green channel using horizontal neighbors.
         """
@@ -54,7 +56,7 @@ class AHDDemosaic:
         
         return G
     
-    def _interpolate_green_vertical(self):
+    def _interpolate_green_vertical(self) -> np.ndarray:
         """
         Interpolate green channel using vertical neighbors.
         """
@@ -80,7 +82,7 @@ class AHDDemosaic:
         
         return G
     
-    def _interpolate_rb_from_green(self, G):
+    def _interpolate_rb_from_green(self, G: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Interpolate R and B channels using green as reference.
         Creates both horizontal and vertical versions.
@@ -141,7 +143,9 @@ class AHDDemosaic:
         
         return R, B
     
-    def _compute_homogeneity_map(self, rgb_h, rgb_v):
+    def _compute_homogeneity_map(
+        self, rgb_h: np.ndarray, rgb_v: np.ndarray
+    ) -> np.ndarray:
         """
         Compute homogeneity map comparing horizontal and vertical interpolations.
         
@@ -169,7 +173,9 @@ class AHDDemosaic:
         
         return decision_map
     
-    def _blend_directions(self, rgb_h, rgb_v, decision_map):
+    def _blend_directions(
+        self, rgb_h: np.ndarray, rgb_v: np.ndarray, decision_map: np.ndarray
+    ) -> np.ndarray:
         """
         Blend horizontal and vertical interpolations based on decision map.
         """
@@ -181,7 +187,7 @@ class AHDDemosaic:
         
         return rgb_blended
     
-    def _median_filter_artifact_removal(self, rgb):
+    def _median_filter_artifact_removal(self, rgb: np.ndarray) -> np.ndarray:
         """
         Apply very light median filtering only to extreme outliers.
         """
@@ -206,7 +212,7 @@ class AHDDemosaic:
         
         return result
     
-    def apply_ahd(self):
+    def apply_ahd(self) -> np.ndarray:
         """
         Apply AHD demosaicing algorithm.
         
@@ -243,12 +249,14 @@ class AHDDemosaicOptimized:
     Uses more sophisticated metrics and smoother blending.
     """
     
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         self.epsilon = 1e-6
         
-    def _directional_green_interpolation(self, direction='horizontal'):
+    def _directional_green_interpolation(
+        self, direction: str = "horizontal"
+    ) -> np.ndarray:
         """
         Enhanced directional green interpolation with better color difference.
         """
@@ -280,7 +288,9 @@ class AHDDemosaicOptimized:
         
         return G
     
-    def _compute_enhanced_homogeneity(self, rgb_h, rgb_v):
+    def _compute_enhanced_homogeneity(
+        self, rgb_h: np.ndarray, rgb_v: np.ndarray
+    ) -> np.ndarray:
         """
         Enhanced homogeneity computation using multiple metrics.
         """
@@ -316,7 +326,9 @@ class AHDDemosaicOptimized:
         
         return alpha
     
-    def _smooth_blend(self, rgb_h, rgb_v, alpha):
+    def _smooth_blend(
+        self, rgb_h: np.ndarray, rgb_v: np.ndarray, alpha: np.ndarray
+    ) -> np.ndarray:
         """
         Smooth blending with spatially varying weights.
         """
@@ -328,7 +340,7 @@ class AHDDemosaicOptimized:
         
         return rgb_blended
     
-    def _adaptive_artifact_removal(self, rgb):
+    def _adaptive_artifact_removal(self, rgb: np.ndarray) -> np.ndarray:
         """
         Very gentle artifact removal that preserves detail.
         """
@@ -353,7 +365,7 @@ class AHDDemosaicOptimized:
         
         return result
     
-    def apply_ahd_optimized(self):
+    def apply_ahd_optimized(self) -> np.ndarray:
         """
         Apply optimized AHD with enhanced homogeneity analysis.
         """
@@ -376,7 +388,9 @@ class AHDDemosaicOptimized:
         
         return rgb_final.astype(np.float32)
     
-    def _interpolate_rb_from_green_enhanced(self, G):
+    def _interpolate_rb_from_green_enhanced(
+        self, G: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Enhanced R/B interpolation with better color difference handling."""
         raw = self.img
         mask_r, mask_g, mask_b = self.masks

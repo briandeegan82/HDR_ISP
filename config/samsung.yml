@@ -113,9 +113,7 @@ auto_white_balance:
 
 white_balance:
   is_enable: true
-  # is_auto refers to auto white balance module
   is_debug: true
-  is_auto: true
   r_gain: 1.0 #1.24609375
   b_gain: 1.0 #2.80859375
   is_save: false

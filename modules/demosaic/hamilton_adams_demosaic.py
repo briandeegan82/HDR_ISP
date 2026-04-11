@@ -9,6 +9,8 @@ Author: Brian Deegan (via AI)
 import numpy as np
 from scipy.ndimage import convolve
 
+from util.isp_types import DemosaicMasks, RawBayerImage
+
 
 class HamiltonAdamsDemosaic:
     """
@@ -23,16 +25,18 @@ class HamiltonAdamsDemosaic:
     than absolute color values, especially across edges.
     """
 
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         self.height, self.width = self.img.shape
         
-    def _safe_divide(self, numerator, denominator, epsilon=1e-6):
+    def _safe_divide(
+        self, numerator: np.ndarray, denominator: np.ndarray, epsilon: float = 1e-6
+    ) -> np.ndarray:
         """Safe division avoiding divide by zero."""
         return numerator / (denominator + epsilon)
     
-    def _compute_gradients(self, channel):
+    def _compute_gradients(self, channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute horizontal and vertical gradients using Laplacian.
         Returns gradient magnitude in each direction.
@@ -52,7 +56,7 @@ class HamiltonAdamsDemosaic:
         
         return h_grad, v_grad
     
-    def _interpolate_green(self):
+    def _interpolate_green(self) -> np.ndarray:
         """
         Interpolate green channel at R and B locations using Hamilton-Adams method.
         Uses directional interpolation based on color differences.
@@ -141,7 +145,7 @@ class HamiltonAdamsDemosaic:
         
         return G
     
-    def _interpolate_red_blue(self, G):
+    def _interpolate_red_blue(self, G: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Interpolate R and B channels using color difference method.
         Uses the constant color ratio assumption: R/G and B/G are locally constant.
@@ -213,7 +217,7 @@ class HamiltonAdamsDemosaic:
         
         return R, B
     
-    def apply_hamilton_adams(self):
+    def apply_hamilton_adams(self) -> np.ndarray:
         """
         Apply Hamilton-Adams demosaicing algorithm.
         
@@ -238,11 +242,11 @@ class HamiltonAdamsOptimized:
     Uses more sophisticated edge detection and color ratio preservation.
     """
     
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = np.asarray(raw_in, dtype=np.float32)
         self.masks = [m.astype(np.float32) for m in masks]
         
-    def apply_hamilton_adams_optimized(self):
+    def apply_hamilton_adams_optimized(self) -> np.ndarray:
         """
         Optimized Hamilton-Adams with enhanced gradient computation.
         """

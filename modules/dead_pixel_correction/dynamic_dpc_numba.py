@@ -10,6 +10,9 @@ import logging
 import numpy as np
 from numba import jit, prange
 import time
+from typing import cast
+
+from util.isp_types import DeadPixelCorrectionConfig, RawBayerImage, SensorInfo
 
 # Try to import Numba, fall back to CPU if not available
 try:
@@ -26,7 +29,12 @@ class DynamicDPCNumba:
     Uses hybrid approach: NumPy for optimized operations, Numba for custom logic
     """
 
-    def __init__(self, img, sensor_info, parm_dpc):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        sensor_info: SensorInfo,
+        parm_dpc: DeadPixelCorrectionConfig,
+    ) -> None:
         self.img = img
         self.sensor_info = sensor_info
         self.bpp = self.sensor_info["bit_depth"]
@@ -40,7 +48,7 @@ class DynamicDPCNumba:
         else:
             self._log.info("  Using CPU dead pixel correction")
 
-    def _should_use_numba(self):
+    def _should_use_numba(self) -> bool:
         """Determine if Numba optimization should be used based on image size."""
         if not NUMBA_AVAILABLE:
             return False
@@ -51,8 +59,16 @@ class DynamicDPCNumba:
 
     @staticmethod
     @jit(nopython=True, parallel=True)
-    def fast_correction_application_numba(img, detection_mask, vertical_grad, horizontal_grad, 
-                                         left_diagonal_grad, right_diagonal_grad, height, width):
+    def fast_correction_application_numba(
+        img: np.ndarray,
+        detection_mask: np.ndarray,
+        vertical_grad: np.ndarray,
+        horizontal_grad: np.ndarray,
+        left_diagonal_grad: np.ndarray,
+        right_diagonal_grad: np.ndarray,
+        height: int,
+        width: int,
+    ) -> np.ndarray:
         """
         Numba-optimized correction application (the most compute-intensive part)
         """
@@ -83,7 +99,7 @@ class DynamicDPCNumba:
         
         return corrected_img
 
-    def dynamic_dpc_numba(self):
+    def dynamic_dpc_numba(self) -> RawBayerImage:
         """
         Hybrid Numba-optimized dynamic dead pixel correction
         Uses NumPy for optimized operations, Numba for custom logic
@@ -311,18 +327,27 @@ class DynamicDPCNumba:
         max_val = (2**self.bpp) - 1
         corrected_img = np.clip(corrected_img, 0, max_val)
 
-        return corrected_img.astype(np.uint16)
+        return cast(RawBayerImage, corrected_img.astype(np.uint16))
 
-    def dynamic_dpc_cpu(self):
+    def dynamic_dpc_cpu(self) -> RawBayerImage:
         """
         CPU fallback implementation using original algorithm
         """
         # Import the original implementation
         from modules.dead_pixel_correction.dynamic_dpc import DynamicDPC
-        dpc = DynamicDPC(self.img, self.sensor_info, {"dp_threshold": self.threshold, "is_debug": self.is_debug})
+        dpc = DynamicDPC(
+            self.img,
+            self.sensor_info,
+            {
+                "is_enable": True,
+                "dp_threshold": self.threshold,
+                "is_debug": self.is_debug,
+                "is_save": False,
+            },
+        )
         return dpc.dynamic_dpc()
 
-    def dynamic_dpc(self):
+    def dynamic_dpc(self) -> RawBayerImage:
         """
         Apply dynamic dead pixel correction with Numba optimization
         """

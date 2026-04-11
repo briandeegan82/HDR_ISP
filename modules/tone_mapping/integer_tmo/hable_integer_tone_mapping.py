@@ -6,20 +6,34 @@ No float ops in the hot path - suitable for hardware implementation.
 """
 import numpy as np
 from util.debug_utils import get_debug_logger
+from util.isp_types import PlatformConfig, SensorInfo, ToneMappingParams, UInt16Image
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 
 
-def _hable_partial(x: np.ndarray, A=0.15, B=0.50, C=0.10, D=0.20, E=0.02, F=0.30) -> np.ndarray:
+def _hable_partial(
+    x: np.ndarray,
+    A: float = 0.15,
+    B: float = 0.50,
+    C: float = 0.10,
+    D: float = 0.20,
+    E: float = 0.02,
+    F: float = 0.30,
+) -> np.ndarray:
     """Uncharted 2 partial: ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F)) - E/F"""
     num = x * (A * x + C * B) + D * E
     den = np.maximum(x * (A * x + B) + D * F, 1e-10)
     return num / den - E / F
 
 
-def _build_hable_lut(size=65536, exposure_bias=2.0, white_point=11.2, hdr_scale=1.0):
+def _build_hable_lut(
+    size: int = 65536,
+    exposure_bias: float = 2.0,
+    white_point: float = 11.2,
+    hdr_scale: float = 1.0,
+) -> UInt16Image:
     """
     Build Hable filmic tone curve LUT.
     Input [0, hdr_scale] maps to [0, 1]; LUT index = normalized input.
@@ -43,7 +57,13 @@ class HableIntegerToneMapping:
 
     _lut_cache = {}
 
-    def __init__(self, img, platform, sensor_info, params):
+    def __init__(
+        self,
+        img: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        params: ToneMappingParams,
+    ) -> None:
         self.img = np.asarray(img, dtype=np.uint32)
         self.platform = platform
         self.sensor_info = sensor_info
@@ -82,7 +102,7 @@ class HableIntegerToneMapping:
             else:
                 self.output_scale = 1.0
 
-    def _build_lut(self):
+    def _build_lut(self) -> None:
         cache_key = (self.lut_size, self.exposure_bias, self.white_point, self.hdr_scale)
         if cache_key not in self._lut_cache:
             self._lut_cache[cache_key] = _build_hable_lut(
@@ -116,7 +136,7 @@ class HableIntegerToneMapping:
         
         return out.astype(np.uint16)
 
-    def plot_tone_curve(self):
+    def plot_tone_curve(self) -> None:
         """Plot and save the Hable integer tone mapping curve."""
         if not self.is_plot_curve:
             return
@@ -177,7 +197,7 @@ class HableIntegerToneMapping:
         except Exception as e:
             self.logger.warning(f"  Failed to plot tone curve: {e}")
 
-    def execute(self) -> np.ndarray:
+    def execute(self) -> UInt16Image:
         """Execute Hable integer tone mapping. Returns uint16."""
         if not self.is_enable:
             scale = self.output_max / max(1, self.input_max)

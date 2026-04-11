@@ -1,0 +1,45 @@
+# AD overlay — merged after config/base_hdr.yml (see util.config_merge.pipeline_config_paths).
+
+sensor_info:
+  width: 3840
+  height: 2185
+  sensor: "AD"
+
+digital_gain:
+  is_enable: true
+  gain_array: [0.03125, 0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 32, 64]
+  is_auto: true
+  ae_feedback: 0
+  is_debug: false
+
+
+auto_white_balance:
+  is_enable: true
+
+# base_hdr uses tone_mapper: reinhard_integer; aces_integer.* is ignored unless mapper is aces_integer.
+tone_mapping:
+  tone_mapper: aces
+
+aces_integer:
+  exposure_adjustment: 5.0  # EV; used only by ACES integer TMO (see tone_mapping.tone_mapper)
+
+auto_exposure:
+  is_enable: true
+  is_debug: false
+  center_illuminance: 0.4
+  histogram_skewness: 0.9
+  exposure_correction_mode: direct   # or direct: pick gain index from meter in one shot (needs digital_gain is_auto)
+  # target_luminance:               # optional target; fraction [0,1] vs meter full scale, or absolute if >1
+  # rerun_from_digital_gain: true  # run DG→AE twice in one pipeline when direct + is_auto (refine after gain change)
+
+color_saturation_enhancement:
+  saturation_gain: 1.5
+
+sharpen:
+  is_enable: false
+
+color_space_conversion: 
+  conv_standard: 2
+  # Bt.709 HD =   1
+  # Bt.601/4407 = 2
+  is_save: false

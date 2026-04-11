@@ -11,6 +11,7 @@ Output: [0,1] for pipeline.
 import numpy as np
 import time
 from util.debug_utils import get_debug_logger
+from util.isp_types import PlatformConfig, SensorInfo, ToneMappingParams
 from util.utils import save_output_array
 import matplotlib
 matplotlib.use('Agg')
@@ -18,7 +19,15 @@ import matplotlib.pyplot as plt
 import os
 
 
-def _hable_partial(x: np.ndarray, A=0.15, B=0.50, C=0.10, D=0.20, E=0.02, F=0.30) -> np.ndarray:
+def _hable_partial(
+    x: np.ndarray,
+    A: float = 0.15,
+    B: float = 0.50,
+    C: float = 0.10,
+    D: float = 0.20,
+    E: float = 0.02,
+    F: float = 0.30,
+) -> np.ndarray:
     """
     Uncharted 2 partial curve: ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F)) - E/F
     """
@@ -34,7 +43,13 @@ class HableToneMapping:
     Operates on luminance; preserves chromaticity.
     """
 
-    def __init__(self, img, platform, sensor_info, params):
+    def __init__(
+        self,
+        img: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        params: ToneMappingParams,
+    ) -> None:
         self.img = img.astype(np.float32).copy()
         self.is_enable = params.get("is_enable", True)
         self.is_save = params.get("is_save", False)
@@ -58,7 +73,7 @@ class HableToneMapping:
         white_scale = 1.0 / max(w_val, 1e-10)
         return np.clip(curr * white_scale, 0.0, 1.0)
 
-    def plot_tone_curve(self):
+    def plot_tone_curve(self) -> None:
         """Plot and save the Hable tone mapping curve."""
         if not self.is_plot_curve:
             return
@@ -93,7 +108,7 @@ class HableToneMapping:
         except Exception as e:
             self.logger.warning(f"  Failed to plot tone curve: {e}")
 
-    def execute(self):
+    def execute(self) -> np.ndarray:
         """Execute Hable tone mapping. Returns [0,1] luminance."""
         if not self.is_enable:
             return np.clip(self.img, 0.0, 1.0)

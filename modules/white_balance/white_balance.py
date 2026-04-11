@@ -9,6 +9,7 @@ Author: 10xEngineers Pvt Ltd
 import time
 import numpy as np
 
+from util.isp_types import AWBGains, PlatformConfig, RawBayerImage, SensorInfo, UInt32Image, WhiteBalanceConfig
 from util.utils import save_output_array
 
 
@@ -17,7 +18,14 @@ class WhiteBalance:
     White balance Module
     """
 
-    def __init__(self, img, platform, sensor_info, parm_wbc, awb_gains):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_wbc: WhiteBalanceConfig,
+        awb_gains: AWBGains,
+    ) -> None:
         """
         Class Constructor
         """
@@ -36,7 +44,7 @@ class WhiteBalance:
         # Initialize debug logger
         self.logger = get_debug_logger("WhiteBalance", config=self.platform)
 
-    def apply_wb_parameters(self):
+    def apply_wb_parameters(self) -> UInt32Image:
         """
         Applies white balance gains from config file to raw images
         """
@@ -44,7 +52,7 @@ class WhiteBalance:
         # get config params
         redgain = self.awb_gains[0]
         bluegain = self.awb_gains[1]
-        self.raw = np.float32(self.img)
+        self.raw = self.img.astype(np.float32)
 
         if self.is_debug:
             self.logger.info(f"   - WB  - red gain : {redgain}")
@@ -69,11 +77,11 @@ class WhiteBalance:
             self.logger.info(f"  Clipping values to {self.bpp} bits.")
             self.raw = np.clip(self.raw, 0, (2**self.bpp) - 1)
         
-        raw_whitebal = np.uint32(self.raw)
+        raw_whitebal = self.raw.astype(np.uint32)
 
         return raw_whitebal
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -87,7 +95,7 @@ class WhiteBalance:
                 self.sensor_info["bayer_pattern"],
             )
 
-    def execute(self):
+    def execute(self) -> RawBayerImage | UInt32Image:
         """
         Execute White Balance Module
         """

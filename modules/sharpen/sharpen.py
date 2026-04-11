@@ -7,6 +7,7 @@ Author: 10xEngineers Pvt Ltd
 """
 
 import time
+import numpy as np
 from modules.sharpen.unsharp_masking import UnsharpMasking as USM
 
 # Try to import GPU-accelerated version
@@ -17,6 +18,7 @@ except ImportError:
     GPU_VERSION_AVAILABLE = False
 
 from util.utils import save_output_array_yuv
+from util.isp_types import PlatformConfig, SensorInfo, SharpenConfig
 
 
 class Sharpening:
@@ -24,7 +26,14 @@ class Sharpening:
     Sharpening with GPU acceleration
     """
 
-    def __init__(self, img, platform, sensor_info, parm_sha, conv_std):
+    def __init__(
+        self,
+        img: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_sha: SharpenConfig,
+        conv_std: int,
+    ) -> None:
         self.img = img
         self.enable = parm_sha["is_enable"]
         self.sensor_info = sensor_info
@@ -45,7 +54,7 @@ class Sharpening:
             except ImportError:
                 self.use_gpu = False
 
-    def apply_unsharp_masking(self):
+    def apply_unsharp_masking(self) -> np.ndarray:
         """
         Apply function for Sharpening Algorithm - Unsharp Masking
         Uses GPU acceleration if available, falls back to CPU otherwise
@@ -63,7 +72,7 @@ class Sharpening:
         
         return usm.apply_sharpen()
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -76,7 +85,7 @@ class Sharpening:
                 self.conv_std,
             )
 
-    def execute(self):
+    def execute(self) -> np.ndarray:
         """
         Applying sharpening to input image
         """

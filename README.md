@@ -12,7 +12,7 @@ This project is a derivative work based on [Infinite-ISP](https://github.com/10x
   - `aces` – ACES filmic (float)
   - `aces_integer` – ACES via LUT (production-style)
   - `hable` / `hable_integer` – Hable/Uncharted 2 filmic
-  - `integer` – Rational curve (Reinhard-style)
+  - `reinhard_integer` – Reinhard global operator (integer / fixed-point friendly)
 - **Lens shading correction**: Radial polynomial per-channel vignetting correction
 - **Gamma correction**: Power curve or sRGB OETF (IEC 61966-2-1)
 - Config-driven pipeline; HDR-aware bit depths
@@ -30,11 +30,17 @@ Parameters are defined in config YAML files (e.g. `config/svs_cam.yml`). Set `CO
 
 ## Configuration
 
-See `config/svs_cam.yml` for a full example. Key sections:
+See `config/base_hdr.yml` (defaults) and a camera overlay such as `config/AD_cam.yml` — files named `*_cam.yml` merge on top of `base_hdr.yml` automatically. Key sections:
 
-- `tone_mapping` – `tone_mapper`: durand, aces, aces_integer, hable, hable_integer
+- `tone_mapping` – `tone_mapper`: durand, aces, aces_integer, hable, hable_integer, reinhard_integer
 - `gamma_correction` – `curve`: gamma or srgb
 - `lens_shading_correction` – radial k1/k2 per channel
+
+## Documentation
+
+- **[ISP blocks and tuning](docs/ISP_BLOCKS_AND_TUNING.md)** — pipeline order, what each YAML block does, and how to tune parameters.
+- Demosaic deep dives: `docs/PPG_DEMOSAIC.md`, `docs/VNG_DEMOSAIC.md`, `docs/HAMILTON_ADAMS_DEMOSAIC.md`
+- Gamma pipeline rationale: `docs/GAMMA_CORRECTION_FINAL_SOLUTION.md`
 
 
 

@@ -11,6 +11,8 @@ from scipy import ndimage
 from tqdm import tqdm
 import cv2
 
+from util.isp_types import NoiseReduction2DConfig, PlatformConfig, SensorInfo
+
 # Import GPU utilities with fallback
 try:
     from util.gpu_utils import (
@@ -21,22 +23,30 @@ try:
 except ImportError:
     GPU_UTILS_AVAILABLE = False
     # Fallback functions for CPU-only systems
-    def is_gpu_available():
+    def is_gpu_available() -> bool:
         return False
     
-    def should_use_gpu(img_size, operation):
+    def should_use_gpu(img_size: tuple[int, int], operation: str) -> bool:
         return False
     
-    def gpu_filter2d(img, kernel, use_gpu=True):
+    def gpu_filter2d(
+        img: np.ndarray, kernel: np.ndarray, use_gpu: bool = True
+    ) -> np.ndarray:
         return cv2.filter2D(img, -1, kernel)
     
-    def gpu_gaussian_blur(img, ksize, sigma_x, sigma_y=0, use_gpu=True):
-        return cv2.GaussianBlur(img, ksize, sigma_x, sigma_y)
+    def gpu_gaussian_blur(
+        img: np.ndarray,
+        ksize: tuple[int, int],
+        sigma_x: float,
+        sigma_y: float = 0,
+        use_gpu: bool = True,
+    ) -> np.ndarray:
+        return cv2.GaussianBlur(img, ksize, sigma_x, sigmaY=sigma_y)
     
-    def to_umat(img, use_gpu=True):
+    def to_umat(img: np.ndarray, use_gpu: bool = True) -> np.ndarray:
         return img
     
-    def from_umat(umat_or_array):
+    def from_umat(umat_or_array: np.ndarray) -> np.ndarray:
         return umat_or_array
 
 
@@ -45,7 +55,13 @@ class NLMOptimized:
     Optimized Non-local means filter with NumPy broadcast operations
     """
 
-    def __init__(self, img, sensor_info, parm_2dnr, platform):
+    def __init__(
+        self,
+        img: np.ndarray,
+        sensor_info: SensorInfo,
+        parm_2dnr: NoiseReduction2DConfig,
+        platform: PlatformConfig,
+    ) -> None:
         self.img = img
         self.sensor_info = sensor_info
         self.parm_2dnr = parm_2dnr
@@ -63,7 +79,7 @@ class NLMOptimized:
         else:
             self.logger.info("  Using CPU implementation for Non-local Means")
 
-    def get_weights(self):
+    def get_weights(self) -> np.ndarray:
         """
         Applying weights using vectorized operations
         """
@@ -81,7 +97,9 @@ class NLMOptimized:
 
         return lut.astype(np.int32)
 
-    def apply_mean_filter_optimized(self, array, patch_size):
+    def apply_mean_filter_optimized(
+        self, array: np.ndarray, patch_size: int
+    ) -> np.ndarray:
         """
         Optimized mean filter using NumPy operations
         """
@@ -90,14 +108,14 @@ class NLMOptimized:
         else:
             return self.apply_mean_filter_cpu(array, patch_size)
 
-    def apply_mean_filter_cpu(self, array, patch_size):
+    def apply_mean_filter_cpu(self, array: np.ndarray, patch_size: int) -> np.ndarray:
         """
         CPU implementation of mean filter using NumPy
         """
         # Use uniform filter for mean calculation (much faster than manual loops)
         return ndimage.uniform_filter(array, size=patch_size, mode='reflect')
 
-    def apply_mean_filter_gpu(self, array, patch_size):
+    def apply_mean_filter_gpu(self, array: np.ndarray, patch_size: int) -> np.ndarray:
         """
         GPU-accelerated mean filter
         """
@@ -123,7 +141,7 @@ class NLMOptimized:
             self.logger.warning(f"  GPU mean filter failed, falling back to CPU: {e}")
             return self.apply_mean_filter_cpu(array, patch_size)
 
-    def apply_nlm_optimized(self):
+    def apply_nlm_optimized(self) -> np.ndarray:
         """
         Optimized Non-local Means Filter using NumPy broadcast operations
         """
@@ -210,7 +228,7 @@ class NLMOptimized:
 
         return denoised_out
 
-    def apply_nlm_vectorized(self):
+    def apply_nlm_vectorized(self) -> np.ndarray:
         """
         Alternative vectorized implementation for even better performance
         """

@@ -8,26 +8,28 @@ Author: 10xEngineers
 import numpy as np
 from scipy.signal import correlate2d
 
+from util.isp_types import DemosaicMasks, RawBayerImage
+
 
 class Malvar:
     """
     CFA interpolation or Demosaicing
     """
 
-    def __init__(self, raw_in, masks):
+    def __init__(self, raw_in: RawBayerImage, masks: DemosaicMasks) -> None:
         self.img = raw_in
         self.masks = masks
 
-    def apply_malvar(self):
+    def apply_malvar(self) -> np.ndarray:
         """
         Demosaicing the given raw image using Malvar-He-Cutler
         """
         # 3D masks accoridng to the given bayer
         mask_r, mask_g, mask_b = self.masks
-        raw_in = np.float32(self.img)
+        raw_in = self.img.astype(np.float32)
 
         # Declaring 3D Demosaiced image
-        demos_out = np.empty((raw_in.shape[0], raw_in.shape[1], 3))
+        demos_out = np.empty((raw_in.shape[0], raw_in.shape[1], 3), dtype=np.float32)
 
         # 5x5 2D Filter coefficients for linear interpolation of
         # r_channel,g_channel and b_channel channels
@@ -36,14 +38,15 @@ class Malvar:
 
         # g_channel at r_channel & b_channel location,
         g_at_r_and_b = (
-            np.float32(
+            np.array(
                 [
                     [0, 0, -1, 0, 0],
                     [0, 0, 2, 0, 0],
                     [-1, 2, 4, 2, -1],
                     [0, 0, 2, 0, 0],
                     [0, 0, -1, 0, 0],
-                ]
+                ],
+                dtype=np.float32,
             )
             * 0.125
         )
@@ -51,14 +54,15 @@ class Malvar:
         # r_channel at green in r_channel row & b_channel column --
         # b_channel at green in b_channel row & r_channel column
         r_at_gr_and_b_at_gb = (
-            np.float32(
+            np.array(
                 [
                     [0, 0, 0.5, 0, 0],
                     [0, -1, 0, -1, 0],
                     [-1, 4, 5, 4, -1],
                     [0, -1, 0, -1, 0],
                     [0, 0, 0.5, 0, 0],
-                ]
+                ],
+                dtype=np.float32,
             )
             * 0.125
         )
@@ -70,14 +74,15 @@ class Malvar:
         # r_channel at blue in b_channel row & b_channel column --
         # b_channel at red in r_channel row & r_channel column
         r_at_b_and_b_at_r = (
-            np.float32(
+            np.array(
                 [
                     [0, 0, -1.5, 0, 0],
                     [0, 2, 0, 2, 0],
                     [-1.5, 0, 6, 0, -1.5],
                     [0, 2, 0, 2, 0],
                     [0, 0, -1.5, 0, 0],
-                ]
+                ],
+                dtype=np.float32,
             )
             * 0.125
         )

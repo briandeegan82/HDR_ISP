@@ -1,9 +1,10 @@
 matplotlib
 numpy<2.0.0
+opencv-python
+pyright
 pyyaml
 rawpy
 scipy
 tqdm
-rawpy
 tifffile
-opencv-python
+numba

@@ -15,6 +15,7 @@ Code / Paper  Reference: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conver
 
 import time
 import numpy as np
+from util.isp_types import ColorSpaceConversionConfig, PlatformConfig, RGBConversionConfig, SensorInfo, UInt8Image, YUVImage
 from util.utils import save_output_array_yuv, save_output_array
 
 
@@ -23,7 +24,14 @@ class RGBConversion:
     YUV to RGB Conversion
     """
 
-    def __init__(self, img, platform, sensor_info, parm_rgb, parm_csc):
+    def __init__(
+        self,
+        img: YUVImage,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_rgb: RGBConversionConfig,
+        parm_csc: ColorSpaceConversionConfig,
+    ) -> None:
         self.img = img.copy()
         self.platform = platform
         self.sensor_info = sensor_info
@@ -37,7 +45,7 @@ class RGBConversion:
         # Initialize debug logger
         self.logger = get_debug_logger("RGBConversion", config=self.platform)
 
-    def yuv_to_rgb(self):
+    def yuv_to_rgb(self) -> UInt8Image:
         """
         YUV-to-RGB Colorspace conversion 8bit
         """
@@ -70,13 +78,13 @@ class RGBConversion:
         self.yuv_img = rgb2d_t.reshape(self.yuv_img.shape).astype(np.float32)
 
         # clip the resultant img as it can have neg rgb values for small Y'
-        self.yuv_img = np.float32(np.clip(self.yuv_img, 0, 255))
+        self.yuv_img = np.clip(self.yuv_img, 0, 255).astype(np.float32)
 
         # convert the image to [0-255]
-        self.yuv_img = np.uint8(self.yuv_img)
+        self.yuv_img = self.yuv_img.astype(np.uint8)
         return self.yuv_img
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -99,7 +107,7 @@ class RGBConversion:
                     self.conv_std,
                 )
 
-    def execute(self):
+    def execute(self) -> UInt8Image:
         """
         Execute RGB Conversion
         """

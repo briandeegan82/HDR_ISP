@@ -13,6 +13,7 @@ No float ops in the hot path - suitable for fixed-point / hardware implementatio
 """
 import numpy as np
 from util.debug_utils import get_debug_logger
+from util.isp_types import PlatformConfig, SensorInfo, ToneMappingParams, UInt16Image
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -29,7 +30,13 @@ class IntegerReinhardToneMapping:
     No float conversion - suitable for fixed-point / hardware implementation.
     """
 
-    def __init__(self, img, platform, sensor_info, params):
+    def __init__(
+        self,
+        img: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        params: ToneMappingParams,
+    ) -> None:
         self.img = np.asarray(img, dtype=np.uint32)  # Luminance or raw (single channel)
         self.platform = platform
         self.sensor_info = sensor_info
@@ -90,7 +97,7 @@ class IntegerReinhardToneMapping:
 
         return np.clip(out, 0, self.output_max).astype(np.uint16)
 
-    def plot_tone_curve(self):
+    def plot_tone_curve(self) -> None:
         """Plot and save the Reinhard tone mapping curve."""
         if not self.is_plot_curve:
             return
@@ -143,7 +150,7 @@ class IntegerReinhardToneMapping:
         except Exception as e:
             self.logger.warning(f"  Failed to plot tone curve: {e}")
 
-    def execute(self) -> np.ndarray:
+    def execute(self) -> UInt16Image:
         """Execute Reinhard tone mapping. Returns uint16."""
         if not self.is_enable:
             # Passthrough: scale to output range

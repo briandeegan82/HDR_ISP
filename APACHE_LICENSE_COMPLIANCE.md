@@ -128,7 +128,7 @@ Author: 10xEngineers Pvt Ltd
 ### Modifications Transparency
 Our modifications are well-documented:
 - Gamma correction pipeline fix (GAMMA_CORRECTION_FINAL_SOLUTION.md)
-- HDR tone mapping implementations (various *_IMPLEMENTATION_SUMMARY.md files)
+- HDR tone mapping implementations (`docs/ISP_BLOCKS_AND_TUNING.md`, `config/base_hdr.yml`)
 - Advanced demosaic algorithms (HAMILTON_ADAMS_DEMOSAIC.md, PPG_DEMOSAIC.md, VNG_DEMOSAIC.md)
 - GPU acceleration modules
 - Enhanced debugging and visualization

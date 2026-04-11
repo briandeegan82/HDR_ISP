@@ -12,13 +12,21 @@ import numpy as np
 from scipy import ndimage
 from tqdm import tqdm
 
+from util.isp_types import BayerNoiseReductionConfig, PlatformConfig, RawBayerImage, SensorInfo
+
 
 class JointBF:
     """
     Bayer noise reduction using joint bilateral filer technique
     """
 
-    def __init__(self, img, sensor_info, parm_bnr, platform):
+    def __init__(
+        self,
+        img: RawBayerImage,
+        sensor_info: SensorInfo,
+        parm_bnr: BayerNoiseReductionConfig,
+        platform: PlatformConfig,
+    ) -> None:
         self.img = img
         self.enable = parm_bnr["is_enable"]
         self.sensor_info = sensor_info
@@ -28,7 +36,7 @@ class JointBF:
         self.is_save = parm_bnr["is_save"]
         self.platform = platform
 
-    def apply_jbf(self):
+    def apply_jbf(self) -> RawBayerImage:
         """
         Apply bnr to the input image and return the output image
         """
@@ -229,10 +237,12 @@ class JointBF:
             ]
 
         # convert normalized image to 32-bit range
-        bnr_out_img = np.uint32(np.clip(bnr_out_img, 0, 1) * ((2**bit_depth) - 1))
+        bnr_out_img = (
+            np.clip(bnr_out_img, 0, 1) * ((2**bit_depth) - 1)
+        ).astype(np.uint32)
         return bnr_out_img
 
-    def gauss_kern_raw(self, kern, std_dev, stride):
+    def gauss_kern_raw(self, kern: int, std_dev: float, stride: int) -> np.ndarray:
         """
         Applying Gaussian Filter
         """
@@ -265,8 +275,15 @@ class JointBF:
         return out_kern
 
     def joint_bilateral_filter(
-        self, in_img, guide_img, spatial_kern, stddev_s, range_kern, stddev_r, stride
-    ):
+        self,
+        in_img: np.ndarray,
+        guide_img: np.ndarray,
+        spatial_kern: int,
+        stddev_s: float,
+        range_kern: int,
+        stddev_r: float,
+        stride: int,
+    ) -> np.ndarray:
         """
         Applying Joint Bilateral Filter
         """
@@ -350,8 +367,15 @@ class JointBF:
         return filt_out
 
     def fast_joint_bilateral_filter(
-        self, in_img, guide_img, spatial_kern, stddev_s, range_kern, stddev_r, stride
-    ):
+        self,
+        in_img: np.ndarray,
+        guide_img: np.ndarray,
+        spatial_kern: int,
+        stddev_s: float,
+        range_kern: int,
+        stddev_r: float,
+        stride: int,
+    ) -> np.ndarray:
         """
         Applying Joint Bilateral Filter
         """

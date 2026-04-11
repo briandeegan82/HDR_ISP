@@ -6,8 +6,18 @@ Author: 10xEngineers
 ------------------------------------------------------------
 """
 import time
+import numpy as np
 from util.utils import save_output_array_yuv
 from modules.ldci.clahe import CLAHE
+from util.isp_types import LDCIConfig, PlatformConfig, SensorInfo
+
+# Try to import optimized version with NumPy broadcast
+try:
+    from modules.ldci.clahe_optimized import CLAHEOptimized as CLAHEOPT
+
+    OPTIMIZED_VERSION_AVAILABLE = True
+except ImportError:
+    OPTIMIZED_VERSION_AVAILABLE = False
 
 
 class LDCI:
@@ -15,7 +25,14 @@ class LDCI:
     Local Dynamic Contrast Enhancement
     """
 
-    def __init__(self, yuv, platform, sensor_info, parm_ldci, conv_std):
+    def __init__(
+        self,
+        yuv: np.ndarray,
+        platform: PlatformConfig,
+        sensor_info: SensorInfo,
+        parm_ldci: LDCIConfig,
+        conv_std: int,
+    ) -> None:
         self.yuv = yuv
         self.img = yuv
         self.enable = parm_ldci["is_enable"]
@@ -27,7 +44,7 @@ class LDCI:
         # Initialize debug logger
         self.logger = get_debug_logger("LDCI", config=self.platform)
 
-    def apply_ldci(self):
+    def apply_ldci(self) -> np.ndarray:
         """
         Applying LDCI module to the given image
         Uses optimized version with NumPy broadcast if available
@@ -45,7 +62,7 @@ class LDCI:
         out_ceh = clahe.apply_clahe()
         return out_ceh
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -58,7 +75,7 @@ class LDCI:
                 self.conv_std,
             )
 
-    def execute(self):
+    def execute(self) -> np.ndarray:
         """
         Executing LDCI module according to user choice
         """

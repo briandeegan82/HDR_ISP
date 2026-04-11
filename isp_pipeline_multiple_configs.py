@@ -12,6 +12,8 @@ import yaml
 from pathlib import Path
 from brilliant_isp import BrilliantISP
 
+from util.config_merge import load_merged_yaml, pipeline_config_paths
+
 # Module logger
 _log = logging.getLogger(__name__)
 
@@ -90,9 +92,7 @@ def load_and_modify_config(base_config_path, modifications=None):
         dict: Modified configuration
     """
     config_path = os.path.join("./config/", base_config_path)
-    
-    with open(config_path, "r", encoding="utf-8") as file:
-        config = yaml.safe_load(file)
+    config = load_merged_yaml(pipeline_config_paths(config_path))
     
     if modifications:
         for section, changes in modifications.items():

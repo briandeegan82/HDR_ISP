@@ -6,8 +6,10 @@ Author: 10xEngineers
 ------------------------------------------------------------
 """
 import time
+import numpy as np
 from util.utils import save_output_array_yuv
 from modules.noise_reduction_2d.non_local_means import NLM
+from util.isp_types import NoiseReduction2DConfig, PlatformConfig, SensorInfo
 
 # Try to import optimized version with NumPy broadcast
 try:
@@ -22,7 +24,14 @@ class NoiseReduction2d:
     2D Noise Reduction with NumPy optimizations
     """
 
-    def __init__(self, img, sensor_info, parm_2dnr, platform, conv_std):
+    def __init__(
+        self,
+        img: np.ndarray,
+        sensor_info: SensorInfo,
+        parm_2dnr: NoiseReduction2DConfig,
+        platform: PlatformConfig,
+        conv_std: int,
+    ) -> None:
         self.img = img
         self.enable = parm_2dnr["is_enable"]
         self.sensor_info = sensor_info
@@ -35,7 +44,7 @@ class NoiseReduction2d:
         # Initialize debug logger
         self.logger = get_debug_logger("NoiseReduction2d", config=self.platform)
 
-    def apply_2dnr(self):
+    def apply_2dnr(self) -> np.ndarray:
         """
         Applying noise reduction algorithms (EBF, NLM, Mean, BF)
         Uses optimized version with NumPy broadcast if available
@@ -52,7 +61,7 @@ class NoiseReduction2d:
         
         return nlm.apply_nlm()
 
-    def save(self):
+    def save(self) -> None:
         """
         Function to save module output
         """
@@ -65,7 +74,7 @@ class NoiseReduction2d:
                 self.conv_std,
             )
 
-    def execute(self):
+    def execute(self) -> np.ndarray:
         """
         Executing 2D noise reduction module
         """

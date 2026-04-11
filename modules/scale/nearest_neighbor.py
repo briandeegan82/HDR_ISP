@@ -15,7 +15,7 @@ class NearestNeighbor:
     """Scale 2D image to given size using OpenCV for high performance."""
 
     def __init__(self, img, new_size):
-        self.single_channel = np.float32(img)
+        self.single_channel = np.asarray(img, dtype=np.float32)
         self.new_size = new_size
 
     def downscale_nearest_neighbor(self):
