@@ -39,6 +39,7 @@ import numpy as np
 import yaml
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 
 from brilliant_isp import BrilliantISP
 from util.config_merge import load_merged_yaml, pipeline_config_paths
@@ -205,6 +206,12 @@ class ISPTuningApp:
         self._param_vars: dict[str, tk.Variable] = {}
         self._param_widgets: dict[str, Any] = {}
         self._auto_process_var = tk.BooleanVar(value=False)
+        self._image_artist = None
+        self._image_height = 0
+        self._image_width = 0
+        self._zoom_factor = 1.2
+        self._pan_start: tuple[float, float, tuple[float, float], tuple[float, float]] | None = None
+        self._crop_overlay_artist = None
 
         # ── Menu bar ─────────────────────────────────────────────────────────
         menubar = tk.Menu(root)
@@ -273,6 +280,31 @@ class ISPTuningApp:
         )
         self._mpl_canvas = FigureCanvasTkAgg(self._fig, master=right)
         self._mpl_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self._mpl_canvas.mpl_connect("scroll_event", self._on_image_scroll)
+        self._mpl_canvas.mpl_connect("button_press_event", self._on_image_press)
+        self._mpl_canvas.mpl_connect("button_release_event", self._on_image_release)
+        self._mpl_canvas.mpl_connect("motion_notify_event", self._on_image_motion)
+        self._mpl_canvas.get_tk_widget().bind(
+            "<Enter>", lambda _e: self._mpl_canvas.get_tk_widget().focus_set()
+        )
+
+        self.ttk.Label(
+            right,
+            text=(
+                "Tip: Mouse wheel zooms at cursor, left-drag pans. "
+                "Keyboard: '+' zoom in, '-' zoom out, 'R' resets view. "
+                "Crop section in Parameters shows a green dashed crop region overlay."
+            ),
+            foreground="#666666",
+            anchor=self.tk.W,
+            padding=(8, 2),
+        ).pack(fill=self.tk.X, side=self.tk.BOTTOM)
+
+        root.bind("+", lambda _e: self._zoom_keyboard(1.0 / self._zoom_factor))
+        root.bind("=", lambda _e: self._zoom_keyboard(1.0 / self._zoom_factor))
+        root.bind("-", lambda _e: self._zoom_keyboard(self._zoom_factor))
+        root.bind("r", lambda _e: self._reset_image_view())
+        root.bind("R", lambda _e: self._reset_image_view())
 
         # ── Initial config ────────────────────────────────────────────────
         if default_config and default_config.is_file():
@@ -302,6 +334,9 @@ class ISPTuningApp:
             tb, text="💾  Save All", command=self._save_all, width=13
         )
         self.save_all_btn.pack(side=tk.LEFT, padx=2)
+        ttk.Button(tb, text="Reset View", command=self._reset_image_view, width=11).pack(
+            side=tk.LEFT, padx=2
+        )
         ttk.Separator(tb, orient=tk.VERTICAL).pack(
             side=tk.LEFT, fill=tk.Y, padx=8, pady=2
         )
@@ -627,6 +662,7 @@ class ISPTuningApp:
         def changed(*_args: Any) -> None:
             self._push_params_to_config()
             self._set_modified()
+            self._redraw_crop_overlay()
             self._schedule_reprocess()
 
         # ── Digital Gain ──────────────────────────────────────────────────
@@ -687,6 +723,42 @@ class ISPTuningApp:
             dg_auto_var.trace_add("write", _toggle_gain_row)
             if dg.get("is_auto", False):
                 gain_row.pack_forget()
+
+        # ── Crop ──────────────────────────────────────────────────────────
+        crop = cfg.get("crop", {})
+        if isinstance(crop, dict):
+            sec = self._section("Crop")
+            crop_enable_var = self.tk.BooleanVar(value=bool(crop.get("is_enable", False)))
+            self._param_vars["crop.is_enable"] = crop_enable_var
+            self.ttk.Checkbutton(
+                sec,
+                text="Enable crop",
+                variable=crop_enable_var,
+                command=changed,
+            ).pack(anchor=self.tk.W, padx=4, pady=(2, 3))
+
+            sensor = cfg.get("sensor_info", {})
+            if not isinstance(sensor, dict):
+                sensor = {}
+            max_w = max(1, int(sensor.get("width", 8192) or 8192))
+            max_h = max(1, int(sensor.get("height", 8192) or 8192))
+
+            self._add_int_spinbox(
+                sec, "X start:", "crop.crop_x_start",
+                int(crop.get("crop_x_start", 0)), 0, max(0, max_w - 1), changed,
+            )
+            self._add_int_spinbox(
+                sec, "Y start:", "crop.crop_y_start",
+                int(crop.get("crop_y_start", 0)), 0, max(0, max_h - 1), changed,
+            )
+            self._add_int_spinbox(
+                sec, "Width:", "crop.new_width",
+                int(crop.get("new_width", max_w)), 1, max_w, changed,
+            )
+            self._add_int_spinbox(
+                sec, "Height:", "crop.new_height",
+                int(crop.get("new_height", max_h)), 1, max_h, changed,
+            )
 
         # ── White Balance ─────────────────────────────────────────────────
         wb = cfg.get("white_balance", {})
@@ -945,6 +1017,35 @@ class ISPTuningApp:
         cb.pack(side=tk.LEFT, padx=2)
         cb.bind("<<ComboboxSelected>>", callback)
         return var
+
+    def _add_int_spinbox(
+        self,
+        parent: Any,
+        label: str,
+        key: str,
+        initial: int,
+        min_value: int,
+        max_value: int,
+        callback: Any,
+    ):
+        tk, ttk = self.tk, self.ttk
+        var = tk.IntVar(value=initial)
+        self._param_vars[key] = var
+        row = ttk.Frame(parent)
+        row.pack(fill=tk.X, pady=1)
+        ttk.Label(row, text=label, width=13, anchor=tk.W).pack(side=tk.LEFT)
+        spin = ttk.Spinbox(
+            row,
+            from_=min_value,
+            to=max_value,
+            increment=1,
+            textvariable=var,
+            width=10,
+            command=callback,
+        )
+        spin.pack(side=tk.LEFT, padx=2)
+        var.trace_add("write", callback)
+        return row
 
     # ── Config sync ───────────────────────────────────────────────────────────
 
@@ -1336,12 +1437,184 @@ class ISPTuningApp:
         self._ax.axis("off")
         display = np.clip(np.asarray(rgb), 0, 255).astype(np.uint8)
         self._last_output_rgb = display.copy()
+        self._image_height, self._image_width = display.shape[:2]
         if display.ndim == 2:
-            self._ax.imshow(display, cmap="gray", vmin=0, vmax=255)
+            self._image_artist = self._ax.imshow(display, cmap="gray", vmin=0, vmax=255)
         else:
-            self._ax.imshow(display)
-        self._fig.tight_layout()
+            self._image_artist = self._ax.imshow(display)
+        self._crop_overlay_artist = None
+        self._redraw_crop_overlay()
+        self._reset_image_view(redraw=False)
         self._mpl_canvas.draw()
+
+    def _reset_image_view(self, redraw: bool = True) -> None:
+        if self._image_width <= 0 or self._image_height <= 0:
+            return
+        self._ax.set_xlim(-0.5, self._image_width - 0.5)
+        self._ax.set_ylim(self._image_height - 0.5, -0.5)
+        self._pan_start = None
+        if redraw:
+            self._mpl_canvas.draw_idle()
+
+    def _on_image_scroll(self, event: Any) -> None:
+        if (
+            self._image_artist is None
+            or event.inaxes != self._ax
+            or event.xdata is None
+            or event.ydata is None
+        ):
+            return
+        if event.button == "up":
+            scale = 1.0 / self._zoom_factor
+        elif event.button == "down":
+            scale = self._zoom_factor
+        else:
+            return
+        x0, x1 = self._ax.get_xlim()
+        y0, y1 = self._ax.get_ylim()
+        new_x0 = event.xdata - (event.xdata - x0) * scale
+        new_x1 = event.xdata + (x1 - event.xdata) * scale
+        new_y0 = event.ydata - (event.ydata - y0) * scale
+        new_y1 = event.ydata + (y1 - event.ydata) * scale
+        self._ax.set_xlim(*self._clamp_axis_limits(new_x0, new_x1, self._image_width))
+        self._ax.set_ylim(*self._clamp_axis_limits(new_y0, new_y1, self._image_height))
+        self._mpl_canvas.draw_idle()
+
+    def _zoom_keyboard(self, scale: float) -> None:
+        if self._image_artist is None or self._image_width <= 0 or self._image_height <= 0:
+            return
+        x0, x1 = self._ax.get_xlim()
+        y0, y1 = self._ax.get_ylim()
+        cx = 0.5 * (x0 + x1)
+        cy = 0.5 * (y0 + y1)
+        new_x0 = cx - (cx - x0) * scale
+        new_x1 = cx + (x1 - cx) * scale
+        new_y0 = cy - (cy - y0) * scale
+        new_y1 = cy + (y1 - cy) * scale
+        self._ax.set_xlim(*self._clamp_axis_limits(new_x0, new_x1, self._image_width))
+        self._ax.set_ylim(*self._clamp_axis_limits(new_y0, new_y1, self._image_height))
+        self._mpl_canvas.draw_idle()
+
+    def _on_image_press(self, event: Any) -> None:
+        if (
+            self._image_artist is None
+            or event.inaxes != self._ax
+            or event.button != 1
+            or event.xdata is None
+            or event.ydata is None
+        ):
+            return
+        self._pan_start = (
+            event.xdata,
+            event.ydata,
+            self._ax.get_xlim(),
+            self._ax.get_ylim(),
+        )
+
+    def _on_image_release(self, event: Any) -> None:
+        del event
+        self._pan_start = None
+
+    def _on_image_motion(self, event: Any) -> None:
+        if (
+            self._pan_start is None
+            or self._image_artist is None
+            or event.inaxes != self._ax
+            or event.xdata is None
+            or event.ydata is None
+        ):
+            return
+        start_x, start_y, start_xlim, start_ylim = self._pan_start
+        dx = event.xdata - start_x
+        dy = event.ydata - start_y
+        self._ax.set_xlim(
+            *self._clamp_axis_limits(start_xlim[0] - dx, start_xlim[1] - dx, self._image_width)
+        )
+        self._ax.set_ylim(
+            *self._clamp_axis_limits(start_ylim[0] - dy, start_ylim[1] - dy, self._image_height)
+        )
+        self._mpl_canvas.draw_idle()
+
+    def _redraw_crop_overlay(self) -> None:
+        if self._crop_overlay_artist is not None:
+            self._crop_overlay_artist.remove()
+            self._crop_overlay_artist = None
+        rect = self._get_crop_overlay_rect()
+        if rect is None:
+            self._mpl_canvas.draw_idle()
+            return
+        x0, y0, w, h = rect
+        self._crop_overlay_artist = Rectangle(
+            (x0, y0),
+            w,
+            h,
+            fill=False,
+            edgecolor="#00cc44",
+            linewidth=1.8,
+            linestyle="--",
+        )
+        self._ax.add_patch(self._crop_overlay_artist)
+        self._mpl_canvas.draw_idle()
+
+    def _get_crop_overlay_rect(self) -> tuple[float, float, float, float] | None:
+        if (
+            self.working_config is None
+            or self._image_width <= 0
+            or self._image_height <= 0
+        ):
+            return None
+        crop = self.working_config.get("crop")
+        if not isinstance(crop, dict) or not bool(crop.get("is_enable", False)):
+            return None
+        sensor = self.working_config.get("sensor_info", {})
+        if not isinstance(sensor, dict):
+            return None
+        sensor_w = int(sensor.get("width", 0) or 0)
+        sensor_h = int(sensor.get("height", 0) or 0)
+        if sensor_w <= 0 or sensor_h <= 0:
+            return None
+        x_start = int(crop.get("crop_x_start", 0) or 0)
+        y_start = int(crop.get("crop_y_start", 0) or 0)
+        new_w = int(crop.get("new_width", sensor_w) or sensor_w)
+        new_h = int(crop.get("new_height", sensor_h) or sensor_h)
+        x_start = max(0, min(x_start, sensor_w - 1))
+        y_start = max(0, min(y_start, sensor_h - 1))
+        new_w = max(1, min(new_w, sensor_w - x_start))
+        new_h = max(1, min(new_h, sensor_h - y_start))
+        sx = self._image_width / float(sensor_w)
+        sy = self._image_height / float(sensor_h)
+        return (
+            x_start * sx - 0.5,
+            y_start * sy - 0.5,
+            new_w * sx,
+            new_h * sy,
+        )
+
+    @staticmethod
+    def _clamp_axis_limits(v0: float, v1: float, size: int) -> tuple[float, float]:
+        if size <= 0:
+            return v0, v1
+        if v0 > v1:
+            lo, hi = v1, v0
+            reverse = True
+        else:
+            lo, hi = v0, v1
+            reverse = False
+        span = hi - lo
+        full_lo, full_hi = -0.5, size - 0.5
+        full_span = full_hi - full_lo
+        if span >= full_span:
+            lo, hi = full_lo, full_hi
+        else:
+            if lo < full_lo:
+                hi += full_lo - lo
+                lo = full_lo
+            if hi > full_hi:
+                lo -= hi - full_hi
+                hi = full_hi
+        if reverse:
+            return hi, lo
+        return lo, hi
 
     # ── About dialog ──────────────────────────────────────────────────────────
 

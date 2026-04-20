@@ -67,52 +67,44 @@ class HamiltonAdamsDemosaic:
         # Start with known green values
         G = raw * mask_g
         
-        # Kernels for color difference estimation
-        # Horizontal neighbors
-        h_kernel = np.array([[0, 0, 0],
-                            [1, 0, 1],
-                            [0, 0, 0]], dtype=np.float32) / 2.0
-        
-        # Vertical neighbors
-        v_kernel = np.array([[0, 1, 0],
-                            [0, 0, 0],
-                            [0, 1, 0]], dtype=np.float32) / 2.0
-        
-        # Second derivative (Laplacian) for edge detection
-        h_laplacian = np.array([[0, 0, 0],
-                               [1, -2, 1],
-                               [0, 0, 0]], dtype=np.float32)
-        
-        v_laplacian = np.array([[0, 1, 0],
-                               [0, -2, 0],
-                               [0, 1, 0]], dtype=np.float32)
+        # Green one-pixel neighbors around R/B sites
+        h_g_kernel = np.array([[0, 0, 0],
+                               [1, 0, 1],
+                               [0, 0, 0]], dtype=np.float32) / 2.0
+        v_g_kernel = np.array([[0, 1, 0],
+                               [0, 0, 0],
+                               [0, 1, 0]], dtype=np.float32) / 2.0
+
+        # Same-color second-derivative correction on a 2-pixel stride.
+        # This follows the Hamilton-Adams idea:
+        # G = avg(neighboring G) + 1/4 * (2*C_center - C_-2 - C_+2)
+        h_correction = np.array([[0, 0, 0, 0, 0],
+                                 [0, 0, 0, 0, 0],
+                                 [-1, 0, 2, 0, -1],
+                                 [0, 0, 0, 0, 0],
+                                 [0, 0, 0, 0, 0]], dtype=np.float32) / 4.0
+        v_correction = np.array([[0, 0, -1, 0, 0],
+                                 [0, 0, 0, 0, 0],
+                                 [0, 0, 2, 0, 0],
+                                 [0, 0, 0, 0, 0],
+                                 [0, 0, -1, 0, 0]], dtype=np.float32) / 4.0
         
         # Interpolate green at R locations
         at_r = mask_r.astype(bool)
         if np.any(at_r):
-            # Get green neighbors
-            G_h = convolve(raw * mask_g, h_kernel, mode='reflect')
-            G_v = convolve(raw * mask_g, v_kernel, mode='reflect')
-            
-            # Compute gradients using R channel (for edge detection)
-            R_h_grad = np.abs(convolve(raw * mask_r, h_laplacian, mode='reflect'))
-            R_v_grad = np.abs(convolve(raw * mask_r, v_laplacian, mode='reflect'))
-            
-            # Compute color difference correction
-            # At R locations, estimate G using R and nearby G values
-            R_at_r = raw * mask_r
-            
-            # Horizontal and vertical estimates with color difference
-            G_est_h = G_h + 0.5 * convolve(raw - convolve(raw * mask_g, h_kernel, mode='reflect'), 
-                                           h_kernel, mode='reflect')
-            G_est_v = G_v + 0.5 * convolve(raw - convolve(raw * mask_g, v_kernel, mode='reflect'),
-                                           v_kernel, mode='reflect')
-            
-            # Directional selection based on gradients
-            # Use direction with smaller gradient
-            G_at_r = np.where(R_h_grad < R_v_grad, G_est_h, G_est_v)
-            
-            # If gradients are similar, average both directions
+            G_h = convolve(raw * mask_g, h_g_kernel, mode='reflect')
+            G_v = convolve(raw * mask_g, v_g_kernel, mode='reflect')
+            R_plane = raw * mask_r
+            G_est_h = G_h + convolve(R_plane, h_correction, mode='reflect')
+            G_est_v = G_v + convolve(R_plane, v_correction, mode='reflect')
+
+            # Directional selection based on local consistency error
+            # between the same-color second derivatives.
+            R_h_grad = np.abs(convolve(R_plane, h_correction, mode='reflect'))
+            R_v_grad = np.abs(convolve(R_plane, v_correction, mode='reflect'))
+            G_at_r = np.where(R_h_grad <= R_v_grad, G_est_h, G_est_v)
+
+            # If gradients are similar, average both directions.
             grad_threshold = 1.2
             similar_grads = (R_h_grad / (R_v_grad + 1e-6) > 1/grad_threshold) & \
                            (R_h_grad / (R_v_grad + 1e-6) < grad_threshold)
@@ -123,27 +115,24 @@ class HamiltonAdamsDemosaic:
         # Interpolate green at B locations (symmetric to R)
         at_b = mask_b.astype(bool)
         if np.any(at_b):
-            G_h = convolve(raw * mask_g, h_kernel, mode='reflect')
-            G_v = convolve(raw * mask_g, v_kernel, mode='reflect')
-            
-            B_h_grad = np.abs(convolve(raw * mask_b, h_laplacian, mode='reflect'))
-            B_v_grad = np.abs(convolve(raw * mask_b, v_laplacian, mode='reflect'))
-            
-            G_est_h = G_h + 0.5 * convolve(raw - convolve(raw * mask_g, h_kernel, mode='reflect'),
-                                           h_kernel, mode='reflect')
-            G_est_v = G_v + 0.5 * convolve(raw - convolve(raw * mask_g, v_kernel, mode='reflect'),
-                                           v_kernel, mode='reflect')
-            
-            G_at_b = np.where(B_h_grad < B_v_grad, G_est_h, G_est_v)
-            
+            G_h = convolve(raw * mask_g, h_g_kernel, mode='reflect')
+            G_v = convolve(raw * mask_g, v_g_kernel, mode='reflect')
+            B_plane = raw * mask_b
+            G_est_h = G_h + convolve(B_plane, h_correction, mode='reflect')
+            G_est_v = G_v + convolve(B_plane, v_correction, mode='reflect')
+
+            B_h_grad = np.abs(convolve(B_plane, h_correction, mode='reflect'))
+            B_v_grad = np.abs(convolve(B_plane, v_correction, mode='reflect'))
+            G_at_b = np.where(B_h_grad <= B_v_grad, G_est_h, G_est_v)
+
             grad_threshold = 1.2
             similar_grads = (B_h_grad / (B_v_grad + 1e-6) > 1/grad_threshold) & \
                            (B_h_grad / (B_v_grad + 1e-6) < grad_threshold)
             G_at_b = np.where(similar_grads, (G_est_h + G_est_v) / 2.0, G_at_b)
             
             G[at_b] = G_at_b[at_b]
-        
-        return G
+
+        return np.maximum(G, 0.0)
     
     def _interpolate_red_blue(self, G: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
