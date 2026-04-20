@@ -959,18 +959,31 @@ class BrilliantISP:
         Execute Brilliant-ISP with AWB gains and correct exposure
         """
 
-        # Maximum Iterations depend on total permissible gains
-        max_dg = len(self.parm_dga["gain_array"])
+        # Max valid gain index (len - 1).  Previous code used len() which caused
+        # an off-by-one: the boundary condition was never satisfied when the gain
+        # was already at its maximum, making the loop infinite.
+        max_dg_idx = len(self.parm_dga["gain_array"]) - 1
+        # Hard cap: at most (gain_array_size + 2) passes regardless of convergence
+        max_iterations = max_dg_idx + 3
 
         # Run ISP-Pipeline
         self.run_pipeline(visualize_output=False)
         self.load_3a_statistics()
+        iterations = 0
         while not (
             (self.ae_feedback == 0)
-            or (self.ae_feedback == -1 and self.dga_current_gain == max_dg)
-            or (self.ae_feedback == 1 and self.dga_current_gain == 0)
+            or (self.ae_feedback == -1 and self.dga_current_gain >= max_dg_idx)
+            or (self.ae_feedback == 1 and self.dga_current_gain <= 0)
             or self.ae_feedback is None
         ):
+            iterations += 1
+            if iterations >= max_iterations:
+                self.logger.warning(
+                    f"3A AE loop hit iteration cap ({max_iterations}) without converging "
+                    f"(ae_feedback={self.ae_feedback}, gain_idx={self.dga_current_gain}). "
+                    "Proceeding with current gain."
+                )
+                break
             self.run_pipeline(visualize_output=False)
             self.load_3a_statistics()
 

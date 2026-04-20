@@ -39,7 +39,7 @@ sensor_info:
 companding:
   is_enable: true
   is_debug: false
-  pedestal: 0
+  pedestal: 240
   companded: true
   companded_pin: [1, 256, 512, 831, 994, 1319, 1984, 2530, 2871, 2968, 3258, 3541, 3855]
   companded_pout: [1, 256, 1024, 3900, 7800, 23400, 87315, 174630, 349260, 548241, 1736000, 5208000, 16777200]
