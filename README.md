@@ -1,91 +1,156 @@
-# BrilliantISP / HDR-ISP
+# BrilliantISP
 
-**BrilliantISP** is developed by **Brian Deegan**. It is based in part on [Infinite-ISP](https://github.com/10x-Engineers/Infinite-ISP) from **10xEngineers**, which in turn draws on FastOpenISP and OpenISP. Standing on the shoulders of giants.
+BrilliantISP is a configurable software ISP pipeline for RAW and HDR imaging workflows.
+It is developed by Brian Deegan and is based in part on [Infinite-ISP](https://github.com/10x-Engineers/Infinite-ISP) by 10xEngineers, with substantial modifications and extensions.
 
-**License**: Apache License 2.0 (see LICENSE and NOTICE files)
+- License: Apache 2.0 (`LICENSE`, `NOTICE`)
+- Language/runtime: Python
+- Primary interfaces:
+  - CLI pipeline scripts
+  - Interactive tuning GUI (`tools/isp_tuning_gui.py`)
 
-## Features
+## Highlights
 
-- **Decompanding (PWC)**: Linearizes companded sensor data for HDR pipelines
-- **Tone mapping** (before or after demosaic):
-  - `durand` – Durand bilateral-filter local TMO
-  - `aces` – ACES filmic (float)
-  - `aces_integer` – ACES via LUT (production-style)
-  - `hable` / `hable_integer` – Hable/Uncharted 2 filmic
-  - `reinhard_integer` – Reinhard global operator (integer / fixed-point friendly)
-- **Lens shading correction**: Radial polynomial per-channel vignetting correction
-- **Gamma correction**: Power curve or sRGB OETF (IEC 61966-2-1)
-- Config-driven pipeline; HDR-aware bit depths
-- Optional GPU acceleration (BNR, Durand TMO, scale, sharpen)
+- Full configurable ISP chain (crop -> denoise -> AWB/AE -> demosaic -> CCM -> gamma -> output format)
+- HDR-aware RAW loading paths (including packed/high-bit-depth formats)
+- Multiple tone mappers (`reinhard_integer`, `aces`, `aces_integer`, `hable`, `hable_integer`, `hdr_durand`)
+- Config merge model (`*_cam.yml` overlays merged on top of `config/base_hdr.yml`)
+- Optional debug histogram generation in pipeline
+- Interactive tuning GUI with live reprocess and analysis tools
 
-## Instructions
+## Repository Layout
 
-Run the pipeline:
+- `brilliant_isp.py` - core `BrilliantISP` pipeline class
+- `isp_pipeline.py` - simplest single-image pipeline entry script
+- `tools/isp_tuning_gui.py` - tuning GUI
+- `config/` - base and camera-specific YAML configs
+- `modules/` - individual ISP block implementations
+- `util/` - config helpers, histogram/debug utilities, shared types
+- `docs/` - deep dives and tuning references
+
+## Requirements
+
+Use Python 3.10+ (recommended). Install dependencies from `requirements.txt`:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Main runtime dependencies include `numpy`, `opencv-python`, `matplotlib`, `rawpy`, `PyYAML`, `scipy`, `tifffile`, `tqdm`, and `numba`.
+
+## Quick Start (CLI)
+
+The fastest way to run one image is:
 
 ```bash
 python isp_pipeline.py
 ```
 
-Parameters are defined in config YAML files (e.g. `config/svs_cam.yml`). Set `CONFIG_PATH` and `RAW_DATA` in `isp_pipeline.py` for your setup.
+By default `isp_pipeline.py` points to:
+- `CONFIG_PATH = ./config/AD_cam.yml`
+- RAW filename `frame_000000.raw`
 
-## Configuration
+Override raw folder without editing code:
 
-See `config/base_hdr.yml` (defaults) and a camera overlay such as `config/AD_cam.yml` — files named `*_cam.yml` merge on top of `base_hdr.yml` automatically. Key sections:
+```bash
+ISP_RAW_DATA=/path/to/raw/folder python isp_pipeline.py
+```
 
-- `tone_mapping` – `tone_mapper`: durand, aces, aces_integer, hable, hable_integer, reinhard_integer
-- `gamma_correction` – `curve`: gamma or srgb
-- `lens_shading_correction` – radial k1/k2 per channel
+If the expected file is missing, the script exits with a clear error and the suggested `ISP_RAW_DATA` override.
 
-## Documentation
+## Interactive Tuning GUI
 
-- **[ISP blocks and tuning](docs/ISP_BLOCKS_AND_TUNING.md)** — pipeline order, what each YAML block does, and how to tune parameters.
-- Demosaic deep dives: `docs/PPG_DEMOSAIC.md`, `docs/VNG_DEMOSAIC.md`, `docs/HAMILTON_ADAMS_DEMOSAIC.md`
-- Gamma pipeline rationale: `docs/GAMMA_CORRECTION_FINAL_SOLUTION.md`
+Run from repo root:
 
+```bash
+python tools/isp_tuning_gui.py
+```
 
+Optional initial config:
 
+```bash
+python tools/isp_tuning_gui.py --config config/AD_cam.yml
+```
 
-## Acknowledgments
+### Core GUI workflow
 
-BrilliantISP is licensed under Apache License 2.0.
+1. `File -> Open config...`
+2. `File -> Open raw...`
+3. Adjust controls in `Blocks` and `Parameters`
+4. Click `Process` (or enable `Auto-process`)
+5. Save via `Save All` / `Save config` / `Save output image`
 
-**Developer**: Brian Deegan  
+### Analysis menu features
 
-**Upstream implementation (portions of this codebase)**: [Infinite-ISP](https://github.com/10x-Engineers/Infinite-ISP) by 10xEngineers  
-**Copyright**: 2024, 10xEngineers  
-**License**: Apache License 2.0
+The GUI includes an `Analysis` menu for fast image QA:
 
-This project includes substantial modifications and additions beyond Infinite-ISP (see NOTICE file).
+- Histogram viewer (RGB + luminance, linear/log)
+- Global image statistics
+- Clipped pixel highlighting (shadow/highlight overlay)
+- Clipping threshold controls
+- Color picker mode (pixel coordinates + RGB/luma in status bar)
+- ROI statistics mode (drag-select region and inspect stats)
 
-Additional acknowledgments:
-- cruxopen for the original openISP
-- fast-openISP contributors
-- Various academic researchers (cited in code and documentation)
+## Configuration Model
 
-## License
+Pipeline behavior is config-driven via YAML files in `config/`.
 
-Copyright 2026, Brian Deegan
+- `config/base_hdr.yml` contains defaults
+- `*_cam.yml` camera files are auto-merged over base config
+- The GUI and scripts both use this merged-config behavior
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Common blocks you will tune frequently:
 
-    http://www.apache.org/licenses/LICENSE-2.0
+- `sensor_info` - dimensions, bit depth, Bayer metadata
+- `digital_gain` / `auto_exposure` - exposure behavior
+- `auto_white_balance` / `white_balance` - WB controls
+- `demosaic` - algorithm selection
+- `tone_mapping` and related parameter sections
+- `gamma_correction` - output transfer curve
+- `color_correction_matrix`, `color_saturation_enhancement`
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+For a complete per-block explanation, see `docs/ISP_BLOCKS_AND_TUNING.md`.
 
-See the NOTICE file for additional attribution requirements.
+## Additional Pipeline Scripts
 
-## List of Open Source ISPs
-- [infiniteISP](https://github.com/10x-Engineers/Infinite-ISP/tree/main)
-- [openISP](https://github.com/cruxopen/openISP.git)
-- [Fast Open Image Signal Processor](https://github.com/QiuJueqin/fast-openISP.git)
-- [AbdoKamel - simple-camera-pipeline](https://github.com/AbdoKamel/simple-camera-pipeline.git)
-- [Mushfiqulalam - isp](https://github.com/mushfiqulalam/isp)
-- [Karaimer - A Software Platform for Manipulating the Camera Imaging Pipeline](https://karaimer.github.io/camera-pipeline)
-- [rawpy](https://github.com/letmaik/rawpy.git)
-- [cruxopen/openISP](https://github.com/cruxopen/openISP.git)
+The repository also includes dataset/batch helper scripts:
+
+- `isp_pipeline_mulitple_images.py` - process multiple folder pairs (dataset or video-style flow)
+- `isp_pipeline_batch_convert.py` - recursively process one RAW per folder into `convert/`
+- `isp_pipeline_multiple_configs.py` - compare output across many config variants
+
+These scripts are practical templates and may require local path edits before use.
+
+## Documentation Index
+
+- `docs/ISP_BLOCKS_AND_TUNING.md` - pipeline order and tuning guide
+- `docs/GAMMA_CORRECTION_FINAL_SOLUTION.md` - gamma placement and rationale
+- `docs/PPG_DEMOSAIC.md` - PPG demosaic details
+- `docs/VNG_DEMOSAIC.md` - VNG demosaic details
+- `docs/HAMILTON_ADAMS_DEMOSAIC.md` - Hamilton-Adams details
+
+## Troubleshooting
+
+- RAW not found:
+  - Check `platform.filename` in config or pass the right folder via `ISP_RAW_DATA`
+- Wrong geometry / reshape errors:
+  - Verify `sensor_info.width`, `sensor_info.height`, `sensor_info.bit_depth`
+- Unexpected colors:
+  - Confirm `sensor_info.bayer_pattern`, WB gains, and CCM entries
+- GUI opens but no preview:
+  - Load both config and RAW, then click `Process`
+- Analysis menu items disabled:
+  - Run at least one successful `Process` to produce preview image
+
+## Attribution and License
+
+- Developer: Brian Deegan
+- Upstream basis (portions): [Infinite-ISP](https://github.com/10x-Engineers/Infinite-ISP), 10xEngineers
+- Additional attribution details: `NOTICE`
+
+Copyright 2026 Brian Deegan
+
+Licensed under the Apache License, Version 2.0:
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)

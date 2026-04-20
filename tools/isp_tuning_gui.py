@@ -181,11 +181,12 @@ def _label_for_key(key: str) -> str:
 class ISPTuningApp:
     def __init__(self, root, default_config: Path | None) -> None:
         import tkinter as tk
-        from tkinter import filedialog, messagebox, ttk
+        from tkinter import filedialog, messagebox, simpledialog, ttk
 
         self.tk = tk
         self.filedialog = filedialog
         self.messagebox = messagebox
+        self.simpledialog = simpledialog
         self.ttk = ttk
 
         self.root = root
@@ -212,6 +213,16 @@ class ISPTuningApp:
         self._zoom_factor = 1.2
         self._pan_start: tuple[float, float, tuple[float, float], tuple[float, float]] | None = None
         self._crop_overlay_artist = None
+        self._clip_overlay_artist = None
+        self._roi_overlay_artist = None
+        self._roi_drag_start: tuple[float, float] | None = None
+        self._clip_low_threshold = 0
+        self._clip_high_threshold = 255
+        self._analysis_menu: Any | None = None
+        self._analysis_menu_item_indices: list[int] = []
+        self._clip_overlay_var = tk.BooleanVar(value=False)
+        self._color_picker_var = tk.BooleanVar(value=False)
+        self._roi_mode_var = tk.BooleanVar(value=False)
 
         # ── Menu bar ─────────────────────────────────────────────────────────
         menubar = tk.Menu(root)
@@ -234,6 +245,38 @@ class ISPTuningApp:
         file_m.add_separator()
         file_m.add_command(label="Exit", command=root.quit)
         root.bind("<Control-s>", lambda _e: self._save_all())
+
+        analysis_m = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Analysis", menu=analysis_m)
+        analysis_m.add_command(
+            label="Image histogram…", command=self._show_histogram_dialog
+        )
+        analysis_m.add_command(
+            label="Global image statistics…", command=self._show_global_stats_dialog
+        )
+        analysis_m.add_separator()
+        analysis_m.add_checkbutton(
+            label="Highlight clipped pixels",
+            variable=self._clip_overlay_var,
+            command=self._on_toggle_clip_overlay,
+        )
+        analysis_m.add_command(
+            label="Set clipping thresholds…", command=self._set_clipping_thresholds
+        )
+        analysis_m.add_separator()
+        analysis_m.add_checkbutton(
+            label="Color picker mode",
+            variable=self._color_picker_var,
+            command=self._on_toggle_color_picker,
+        )
+        analysis_m.add_checkbutton(
+            label="ROI statistics mode",
+            variable=self._roi_mode_var,
+            command=self._on_toggle_roi_mode,
+        )
+        self._analysis_menu = analysis_m
+        self._analysis_menu_item_indices = [0, 1, 3, 4, 6, 7]
+        self._set_analysis_menu_enabled(False)
 
         help_m = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_m)
@@ -399,6 +442,246 @@ class ISPTuningApp:
     def _set_modified(self, modified: bool = True) -> None:
         self._modified = modified
         self._update_status()
+
+    # ── Analysis tools ────────────────────────────────────────────────────────
+
+    def _set_analysis_menu_enabled(self, enabled: bool) -> None:
+        if self._analysis_menu is None:
+            return
+        state = self.tk.NORMAL if enabled else self.tk.DISABLED
+        for idx in self._analysis_menu_item_indices:
+            self._analysis_menu.entryconfig(idx, state=state)
+
+    def _require_preview(self, op_name: str) -> bool:
+        if self._last_output_rgb is None:
+            self.messagebox.showwarning(op_name, "Run Process to generate an image first.")
+            return False
+        return True
+
+    @staticmethod
+    def _compute_luminance(image: np.ndarray) -> np.ndarray:
+        if image.ndim == 2:
+            return image.astype(np.float64)
+        img = image.astype(np.float64)
+        return 0.299 * img[:, :, 0] + 0.587 * img[:, :, 1] + 0.114 * img[:, :, 2]
+
+    @staticmethod
+    def _compute_basic_stats(values: np.ndarray) -> dict[str, float]:
+        data = values.astype(np.float64).ravel()
+        if data.size == 0:
+            return {
+                "min": 0.0, "max": 0.0, "mean": 0.0, "std": 0.0,
+                "p0_1": 0.0, "p1": 0.0, "p50": 0.0, "p99": 0.0, "p99_9": 0.0,
+            }
+        return {
+            "min": float(np.min(data)),
+            "max": float(np.max(data)),
+            "mean": float(np.mean(data)),
+            "std": float(np.std(data)),
+            "p0_1": float(np.percentile(data, 0.1)),
+            "p1": float(np.percentile(data, 1.0)),
+            "p50": float(np.percentile(data, 50.0)),
+            "p99": float(np.percentile(data, 99.0)),
+            "p99_9": float(np.percentile(data, 99.9)),
+        }
+
+    def _estimate_dynamic_range_ev(self, image: np.ndarray) -> float:
+        luma = self._compute_luminance(image).ravel()
+        nz = luma[luma > 0]
+        if nz.size == 0:
+            return 0.0
+        lo = float(np.percentile(nz, 0.1))
+        hi = float(np.percentile(luma, 99.9))
+        if lo <= 0.0 or hi <= 0.0:
+            return 0.0
+        return float(np.log2(hi / lo))
+
+    def _format_stats_text(self, title: str, image: np.ndarray) -> str:
+        lines = [title, "=" * len(title), ""]
+        h, w = image.shape[:2]
+        lines.append(f"Size: {w}x{h}")
+        lines.append(f"Dynamic range estimate: {self._estimate_dynamic_range_ev(image):.2f} EV")
+        lines.append("")
+        if image.ndim == 2:
+            stats = self._compute_basic_stats(image)
+            lines.extend(self._stats_lines("Luma", stats))
+        else:
+            lines.extend(self._stats_lines("Red", self._compute_basic_stats(image[:, :, 0])))
+            lines.extend(self._stats_lines("Green", self._compute_basic_stats(image[:, :, 1])))
+            lines.extend(self._stats_lines("Blue", self._compute_basic_stats(image[:, :, 2])))
+            lines.extend(self._stats_lines("Luma", self._compute_basic_stats(self._compute_luminance(image))))
+        return "\n".join(lines)
+
+    @staticmethod
+    def _stats_lines(label: str, stats: dict[str, float]) -> list[str]:
+        return [
+            f"{label}:",
+            f"  min/max : {stats['min']:.2f} / {stats['max']:.2f}",
+            f"  mean/std: {stats['mean']:.2f} / {stats['std']:.2f}",
+            f"  p0.1/p1 : {stats['p0_1']:.2f} / {stats['p1']:.2f}",
+            f"  p50/p99 : {stats['p50']:.2f} / {stats['p99']:.2f}",
+            f"  p99.9   : {stats['p99_9']:.2f}",
+            "",
+        ]
+
+    def _show_text_dialog(self, title: str, body: str, width: int = 78, height: int = 28) -> None:
+        win = self.tk.Toplevel(self.root)
+        win.title(title)
+        win.transient(self.root)
+        win.minsize(460, 320)
+        outer = self.ttk.Frame(win, padding=(8, 8))
+        outer.pack(fill=self.tk.BOTH, expand=True)
+        txt = self.tk.Text(
+            outer, wrap=self.tk.NONE, width=width, height=height,
+            font=("TkFixedFont", 10),
+        )
+        scroll_y = self.ttk.Scrollbar(outer, orient=self.tk.VERTICAL, command=txt.yview)
+        scroll_x = self.ttk.Scrollbar(outer, orient=self.tk.HORIZONTAL, command=txt.xview)
+        txt.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+        txt.grid(row=0, column=0, sticky="nsew")
+        scroll_y.grid(row=0, column=1, sticky="ns")
+        scroll_x.grid(row=1, column=0, sticky="ew")
+        outer.rowconfigure(0, weight=1)
+        outer.columnconfigure(0, weight=1)
+        txt.insert("1.0", body)
+        txt.configure(state=self.tk.DISABLED)
+        self.ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 8))
+
+    def _show_histogram_dialog(self) -> None:
+        if not self._require_preview("Image histogram"):
+            return
+        image = self._last_output_rgb
+        if image is None:
+            return
+        win = self.tk.Toplevel(self.root)
+        win.title("Image histogram")
+        win.transient(self.root)
+        win.geometry("920x700")
+
+        controls = self.ttk.Frame(win, padding=(8, 6))
+        controls.pack(fill=self.tk.X)
+        log_var = self.tk.BooleanVar(value=False)
+        self.ttk.Checkbutton(controls, text="Log Y axis", variable=log_var).pack(
+            side=self.tk.LEFT
+        )
+
+        fig = Figure(figsize=(8.8, 6.3), dpi=100)
+        canvas = FigureCanvasTkAgg(fig, master=win)
+        canvas.get_tk_widget().pack(fill=self.tk.BOTH, expand=True, padx=8, pady=(0, 8))
+
+        def redraw(*_args: Any) -> None:
+            fig.clear()
+            bins = np.arange(257)
+            if image.ndim == 2:
+                axes = fig.subplots(1, 1)
+                axs = [axes]
+                gray_hist, _ = np.histogram(image.ravel(), bins=bins)
+                axs[0].plot(gray_hist, color="#666666")
+                axs[0].set_title("Luma")
+                axs[0].set_xlim(0, 255)
+            else:
+                axs = fig.subplots(2, 2).ravel()
+                channels = [
+                    ("Red", image[:, :, 0], "#d53e4f"),
+                    ("Green", image[:, :, 1], "#33a02c"),
+                    ("Blue", image[:, :, 2], "#377eb8"),
+                    ("Luma", self._compute_luminance(image), "#555555"),
+                ]
+                for ax, (name, data, color) in zip(axs, channels):
+                    hist, _ = np.histogram(np.asarray(data).ravel(), bins=bins)
+                    ax.plot(hist, color=color)
+                    ax.set_title(name)
+                    ax.set_xlim(0, 255)
+            for ax in axs:
+                ax.set_xlabel("Pixel value")
+                ax.set_ylabel("Count")
+                if log_var.get():
+                    ax.set_yscale("log")
+                else:
+                    ax.set_yscale("linear")
+                ax.grid(True, alpha=0.25)
+            fig.tight_layout()
+            canvas.draw_idle()
+
+        log_var.trace_add("write", redraw)
+        redraw()
+
+    def _show_global_stats_dialog(self) -> None:
+        if not self._require_preview("Global image statistics"):
+            return
+        image = self._last_output_rgb
+        if image is None:
+            return
+        body = self._format_stats_text("Global image statistics", image)
+        self._show_text_dialog("Global image statistics", body)
+
+    def _set_clipping_thresholds(self) -> None:
+        if not self._require_preview("Set clipping thresholds"):
+            return
+        low = self.simpledialog.askinteger(
+            "Shadows threshold",
+            "Mark pixels <= this value as clipped shadows (0-255):",
+            parent=self.root,
+            minvalue=0,
+            maxvalue=255,
+            initialvalue=self._clip_low_threshold,
+        )
+        if low is None:
+            return
+        high = self.simpledialog.askinteger(
+            "Highlights threshold",
+            "Mark pixels >= this value as clipped highlights (0-255):",
+            parent=self.root,
+            minvalue=0,
+            maxvalue=255,
+            initialvalue=self._clip_high_threshold,
+        )
+        if high is None:
+            return
+        if low > high:
+            self.messagebox.showwarning(
+                "Clipping thresholds",
+                "Low threshold cannot be greater than high threshold.",
+            )
+            return
+        self._clip_low_threshold = int(low)
+        self._clip_high_threshold = int(high)
+        self._redraw_clipping_overlay()
+        self._update_status(
+            f"Clipping thresholds set: shadows <= {low}, highlights >= {high}"
+        )
+
+    def _on_toggle_clip_overlay(self) -> None:
+        if self._clip_overlay_var.get() and not self._require_preview("Clipping overlay"):
+            self._clip_overlay_var.set(False)
+            return
+        self._redraw_clipping_overlay()
+        if self._clip_overlay_var.get():
+            self._update_status("Clipping overlay enabled.")
+        else:
+            self._update_status("Clipping overlay disabled.")
+
+    def _on_toggle_color_picker(self) -> None:
+        if self._color_picker_var.get() and not self._require_preview("Color picker"):
+            self._color_picker_var.set(False)
+            return
+        if self._color_picker_var.get():
+            self._roi_mode_var.set(False)
+            self._clear_roi_overlay()
+            self._update_status("Color picker enabled — click image to inspect a pixel.")
+        else:
+            self._update_status("Color picker disabled.")
+
+    def _on_toggle_roi_mode(self) -> None:
+        if self._roi_mode_var.get() and not self._require_preview("ROI statistics"):
+            self._roi_mode_var.set(False)
+            return
+        if self._roi_mode_var.get():
+            self._color_picker_var.set(False)
+            self._update_status("ROI mode enabled — drag on image to measure a region.")
+        else:
+            self._clear_roi_overlay()
+            self._update_status("ROI mode disabled.")
 
     # ── Blocks tab ────────────────────────────────────────────────────────────
 
@@ -1437,15 +1720,78 @@ class ISPTuningApp:
         self._ax.axis("off")
         display = np.clip(np.asarray(rgb), 0, 255).astype(np.uint8)
         self._last_output_rgb = display.copy()
+        self._set_analysis_menu_enabled(True)
         self._image_height, self._image_width = display.shape[:2]
         if display.ndim == 2:
             self._image_artist = self._ax.imshow(display, cmap="gray", vmin=0, vmax=255)
         else:
             self._image_artist = self._ax.imshow(display)
         self._crop_overlay_artist = None
+        self._clip_overlay_artist = None
+        self._clear_roi_overlay()
         self._redraw_crop_overlay()
+        self._redraw_clipping_overlay()
         self._reset_image_view(redraw=False)
         self._mpl_canvas.draw()
+
+    def _redraw_clipping_overlay(self) -> None:
+        if self._clip_overlay_artist is not None:
+            self._clip_overlay_artist.remove()
+            self._clip_overlay_artist = None
+        if not self._clip_overlay_var.get():
+            self._mpl_canvas.draw_idle()
+            return
+        if self._last_output_rgb is None or self._image_artist is None:
+            self._mpl_canvas.draw_idle()
+            return
+        img = self._last_output_rgb
+        if img.ndim == 2:
+            low_mask = img <= self._clip_low_threshold
+            high_mask = img >= self._clip_high_threshold
+        else:
+            low_mask = np.any(img <= self._clip_low_threshold, axis=2)
+            high_mask = np.any(img >= self._clip_high_threshold, axis=2)
+        overlay = np.zeros((img.shape[0], img.shape[1], 4), dtype=np.float32)
+        overlay[low_mask] = (0.1, 0.4, 1.0, 0.38)
+        overlay[high_mask] = (1.0, 0.15, 0.15, 0.38)
+        self._clip_overlay_artist = self._ax.imshow(overlay, interpolation="nearest")
+        self._mpl_canvas.draw_idle()
+
+    def _clear_roi_overlay(self) -> None:
+        self._roi_drag_start = None
+        if self._roi_overlay_artist is not None:
+            self._roi_overlay_artist.remove()
+            self._roi_overlay_artist = None
+        self._mpl_canvas.draw_idle()
+
+    def _pixel_from_event(self, event: Any) -> tuple[int, int] | None:
+        if event.xdata is None or event.ydata is None:
+            return None
+        x = int(np.clip(np.floor(event.xdata + 0.5), 0, self._image_width - 1))
+        y = int(np.clip(np.floor(event.ydata + 0.5), 0, self._image_height - 1))
+        return x, y
+
+    def _report_color_at(self, x: int, y: int) -> None:
+        if self._last_output_rgb is None:
+            return
+        pix = self._last_output_rgb[y, x]
+        if self._last_output_rgb.ndim == 2:
+            lum = float(pix)
+            msg = f"Pixel ({x}, {y}) gray={int(pix)} luma={lum:.2f}"
+        else:
+            r, g, b = [int(v) for v in pix]
+            lum = float(0.299 * r + 0.587 * g + 0.114 * b)
+            msg = f"Pixel ({x}, {y}) RGB=({r}, {g}, {b}) luma={lum:.2f}"
+        self._update_status(msg)
+
+    def _show_roi_stats(self, roi: np.ndarray, bounds: tuple[int, int, int, int]) -> None:
+        x0, y0, x1, y1 = bounds
+        w = x1 - x0 + 1
+        h = y1 - y0 + 1
+        title = f"ROI statistics [{x0}:{x1}, {y0}:{y1}]"
+        body = self._format_stats_text(title, roi)
+        body = f"Region size: {w}x{h}\nArea: {w * h} px\n\n{body}"
+        self._show_text_dialog("ROI statistics", body)
 
     def _reset_image_view(self, redraw: bool = True) -> None:
         if self._image_width <= 0 or self._image_height <= 0:
@@ -1504,6 +1850,31 @@ class ISPTuningApp:
             or event.ydata is None
         ):
             return
+        if self._color_picker_var.get():
+            pix = self._pixel_from_event(event)
+            if pix is not None:
+                self._report_color_at(*pix)
+            return
+        if self._roi_mode_var.get():
+            pix = self._pixel_from_event(event)
+            if pix is None:
+                return
+            x0, y0 = pix
+            self._roi_drag_start = (float(x0), float(y0))
+            if self._roi_overlay_artist is not None:
+                self._roi_overlay_artist.remove()
+            self._roi_overlay_artist = Rectangle(
+                (x0 - 0.5, y0 - 0.5),
+                1.0,
+                1.0,
+                fill=False,
+                edgecolor="#ffd84d",
+                linewidth=1.5,
+                linestyle="--",
+            )
+            self._ax.add_patch(self._roi_overlay_artist)
+            self._mpl_canvas.draw_idle()
+            return
         self._pan_start = (
             event.xdata,
             event.ydata,
@@ -1512,10 +1883,34 @@ class ISPTuningApp:
         )
 
     def _on_image_release(self, event: Any) -> None:
-        del event
+        if self._roi_mode_var.get() and self._roi_drag_start is not None:
+            pix = self._pixel_from_event(event)
+            if pix is not None and self._last_output_rgb is not None:
+                x0, y0 = [int(v) for v in self._roi_drag_start]
+                x1, y1 = pix
+                xa, xb = sorted((x0, x1))
+                ya, yb = sorted((y0, y1))
+                roi = self._last_output_rgb[ya:yb + 1, xa:xb + 1]
+                if roi.size > 0:
+                    self._show_roi_stats(roi, (xa, ya, xb, yb))
+            self._roi_drag_start = None
         self._pan_start = None
 
     def _on_image_motion(self, event: Any) -> None:
+        if self._roi_mode_var.get() and self._roi_drag_start is not None:
+            pix = self._pixel_from_event(event)
+            if pix is None or self._roi_overlay_artist is None:
+                return
+            x0, y0 = self._roi_drag_start
+            x1, y1 = pix
+            xa, xb = sorted((x0, float(x1)))
+            ya, yb = sorted((y0, float(y1)))
+            self._roi_overlay_artist.set_x(xa - 0.5)
+            self._roi_overlay_artist.set_y(ya - 0.5)
+            self._roi_overlay_artist.set_width(max(1.0, xb - xa + 1.0))
+            self._roi_overlay_artist.set_height(max(1.0, yb - ya + 1.0))
+            self._mpl_canvas.draw_idle()
+            return
         if (
             self._pan_start is None
             or self._image_artist is None
