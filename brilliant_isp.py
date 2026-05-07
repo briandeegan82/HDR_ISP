@@ -183,6 +183,7 @@ from modules.color_space_conversion.color_space_conversion import (
     ColorSpaceConversion as CSC,
 )
 from modules.ldci.ldci import LDCI
+from modules.ldci.ldci_rgb import apply_ldci_rgb8
 from modules.sharpen.sharpen import Sharpening as SHARP
 from modules.noise_reduction_2d.noise_reduction_2d import NoiseReduction2d as NR2D
 from modules.rgb_conversion.rgb_conversion import RGBConversion as RGBC
@@ -321,6 +322,9 @@ class BrilliantISP:
         self.bit_depth = self.sensor_info["bit_depth"]
         self.tone_mapping: ToneMappingConfig = c_yaml["tone_mapping"]
         self.tone_mapping_before_demosaic = self.tone_mapping["tone_mapping_before_demosaic"]
+        # hdr_durand is the YAML block name; tone_mapper value must be durand.
+        if self.tone_mapping.get("tone_mapper") == "hdr_durand":
+            self.tone_mapping["tone_mapper"] = "durand"
         self.tone_mapper = self.tone_mapping["tone_mapper"]
         if self.tone_mapper == "aces":
             self.param_aces = c_yaml.get("aces", {})
@@ -724,7 +728,10 @@ class BrilliantISP:
 
         # =====================================================================
         # Local Dynamic Contrast Improvement
-        if skip_disabled and not self.parm_ldci["is_enable"]:
+        # When post_gamma=true, LDCI is deferred to after gamma on 8-bit RGB
+        # (matching boltISP's applyLdciRgb888 placement).
+        ldci_post_gamma = bool(self.parm_ldci.get("post_gamma", False))
+        if ldci_post_gamma or (skip_disabled and not self.parm_ldci["is_enable"]):
             ldci_img = csc_img
         else:
             ldci = LDCI(
@@ -782,6 +789,16 @@ class BrilliantISP:
         gmc = GC(rgbc_img, self.platform, self.sensor_info, self.parm_gmc)
         gamma_img = gmc.execute()
         self.logger.info(f"Gamma output range: [{np.min(gamma_img)}, {np.max(gamma_img)}]")
+
+        # =====================================================================
+        # Post-gamma LDCI on 8-bit gamma-encoded RGB
+        # Runs only when ldci.post_gamma: true (matches boltISP placement)
+        if ldci_post_gamma:
+            self.logger.info("Applying post-gamma LDCI on 8-bit RGB (boltISP-compatible mode)")
+            gamma_img = apply_ldci_rgb8(
+                gamma_img, self.platform, self.sensor_info, self.parm_ldci
+            )
+            self.logger.info(f"  Post-gamma LDCI output range: [{np.min(gamma_img)}, {np.max(gamma_img)}]")
 
         # =====================================================================
         # Scaling

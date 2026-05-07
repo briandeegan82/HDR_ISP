@@ -27,6 +27,9 @@ class ColorCorrectionMatrix:
         self.enable = parm_ccm["is_enable"]
         self.sensor_info = sensor_info
         self.parm_ccm = parm_ccm
+        # CCM operates on the 16-bit linear RGB produced by demosaic, so normalise
+        # by pipeline_rgb_bit_depth (typically 16 → 65535), not output_bit_depth (8).
+        self.pipeline_bits = sensor_info.get("pipeline_rgb_bit_depth", 16)
         self.output_bit_depth = sensor_info["output_bit_depth"]
         self.ccm_mat = None
         self.is_save = parm_ccm["is_save"]
@@ -44,8 +47,10 @@ class ColorCorrectionMatrix:
 
         self.ccm_mat = np.array([r_1, r_2, r_3], dtype=np.float32)
 
-        # normalize nbit to 0-1 img
-        self.img = self.img.astype(np.float32) / (2**self.output_bit_depth - 1)
+        pipeline_max = float(2**self.pipeline_bits - 1)
+
+        # Normalise 16-bit pipeline data to [0, 1]
+        self.img = self.img.astype(np.float32) / pipeline_max
 
         # convert to nx3
         img1 = self.img.reshape(((self.img.shape[0] * self.img.shape[1], 3)))
@@ -56,9 +61,9 @@ class ColorCorrectionMatrix:
         # clipping after ccm is must to eliminate neg values
         out = np.clip(out, 0, 1).astype(np.float32)
 
-        # convert back
+        # convert back to 16-bit pipeline range
         out = out.reshape(self.img.shape).astype(self.img.dtype)
-        out = (out * (2**self.output_bit_depth - 1)).astype(np.uint16)
+        out = (out * pipeline_max).astype(np.uint16)
 
         return out
 

@@ -1,5 +1,5 @@
 platform:
-  filename: frame_000000.raw
+  filename: frame_0000.raw
   disable_progress_bar: false
   leave_pbar_string: false
   render_3a: false
@@ -16,10 +16,10 @@ sensor_info:
   hdr_bit_depth: 24
   bit_depth: 12
   pipeline_rgb_bit_depth: 16
-  width: 3840
-  height: 2185
+  width: 1920
+  height: 1536
   output_bit_depth: 8
-  sensor: AD
+  sensor: SVS
   endian_type: ieee-be
   data_format: uint16
   embedded_rows_top: 0
@@ -27,44 +27,36 @@ sensor_info:
 companding:
   is_enable: true
   is_debug: false
-  pedestal: 0
+  pedestal: 240
   companded: true
   companded_pin:
-  - 100
-  - 175
-  - 308
-  - 423
-  - 624
-  - 762
-  - 1003
-  - 1167
-  - 1456
-  - 1652
-  - 1998
-  - 2233
-  - 2646
-  - 2928
-  - 3423
-  - 3759
-  - 4095
+  - 1
+  - 256
+  - 512
+  - 831
+  - 994
+  - 1319
+  - 1984
+  - 2530
+  - 2871
+  - 2968
+  - 3258
+  - 3541
+  - 3855
   companded_pout:
-  - 100
-  - 212
-  - 450
-  - 954
-  - 2024
-  - 4293
-  - 9106
-  - 19313
-  - 40963
-  - 87907
-  - 184279
-  - 390856
-  - 829005
-  - 1758320
-  - 3729396
-  - 7929775
-  - 16777215
+  - 1
+  - 256
+  - 1024
+  - 3900
+  - 7800
+  - 23400
+  - 87315
+  - 174630
+  - 349260
+  - 548241
+  - 1736000
+  - 5208000
+  - 16777200
   is_save: false
 crop:
   is_enable: false
@@ -116,11 +108,11 @@ digital_gain:
   - 64
   - 128
   current_gain: 10
-  exposure_correction_mode: direct
   ae_feedback: null
   is_save: false
+  exposure_correction_mode: direct
 lens_shading_correction:
-  is_enable: false
+  is_enable: true
   is_save: false
   r_k1: 4.25
   r_k2: 4.08
@@ -158,10 +150,18 @@ demosaic:
   algorithm: bilinear
 color_correction_matrix:
   is_enable: true
-  # Calibration CCM for this camera (matches boltISP AD_cam.yml)
-  corrected_red:   [ 1.1604,  0.0462, -0.2067]
-  corrected_green: [-0.2355,  1.5297, -0.2943]
-  corrected_blue:  [ 0.0594, -0.3915,  1.3321]
+  corrected_red:
+  - 1.0
+  - 0.0
+  - 0.0
+  corrected_green:
+  - 0.0
+  - 1.0
+  - 0.0
+  corrected_blue:
+  - 0.0
+  - 0.0
+  - 1.0
   is_save: false
 gamma_correction:
   is_enable: true
@@ -173,17 +173,16 @@ auto_exposure:
   is_debug: false
   center_illuminance: 0.4
   histogram_skewness: 0.9
-  exposure_correction_mode: direct
   target_luminance: 0.5
+  exposure_correction_mode: direct
 color_space_conversion:
   conv_standard: 2
   is_save: false
 color_saturation_enhancement:
-  is_enable: false
-  saturation_gain: 1.5
+  is_enable: true
+  saturation_gain: 1.1
 ldci:
   is_enable: false
-  post_gamma: true   # run after gamma on 8-bit RGB, matching boltISP placement
   clip_limit: 2.0
   wind: 128
   is_save: false
@@ -217,8 +216,8 @@ yuv_conversion_format:
   is_save: false
 tone_mapping:
   is_enable: true
-  tone_mapping_before_demosaic: false
-  tone_mapper: hable
+  tone_mapping_before_demosaic: true
+  tone_mapper: hable_integer
   is_save: false
 reinhard_integer:
   is_enable: true
@@ -245,11 +244,11 @@ hdr_durand:
   contrast_factor: 2.0
   downsample_factor: 4
 hable:
-  is_enable: true
+  is_enable: false
   is_save: false
   is_plot_curve: false
-  exposure_bias: 2.0   # must match boltISP hable_exposure_bias
-  white_point: 11.2    # must match boltISP hable_white_point
+  exposure_bias: 2.0
+  white_point: 11.2
 hable_integer:
   is_enable: true
   is_plot_curve: true

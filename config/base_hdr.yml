@@ -120,7 +120,7 @@ bayer_noise_reduction:
 # White balance: AWB estimates R/B gains per frame when auto_white_balance.is_enable.
 # white_balance applies those gains (or manual r_gain/b_gain when AWB is off). is_auto is synced from AWB at load.
 auto_white_balance:
-  is_enable: false
+  is_enable: true
   is_debug: false
   underexposed_percentage: 0.05
   overexposed_percentage: 0.05
@@ -129,7 +129,7 @@ auto_white_balance:
   percentage: 3.5 # pca
 
 white_balance:
-  is_enable: false
+  is_enable: true
   is_debug: false
   r_gain: 1.0
   b_gain: 1.0
@@ -162,12 +162,13 @@ gamma_correction:
   gamma: 2.2       # Used when curve='gamma'
 
 auto_exposure:
-  is_enable: false
+  is_enable: true
   is_debug: false
   center_illuminance: 0.4
   histogram_skewness: 0.9
   # exposure_correction_mode: step   # or direct: pick gain index from meter in one shot (needs digital_gain is_auto)
-  # target_luminance:               # optional target; fraction [0,1] vs meter full scale, or absolute if >1
+  target_luminance: 0.5 
+                # optional target; fraction [0,1] vs meter full scale, or absolute if >1
   # rerun_from_digital_gain: true  # default for direct: second DG→…→AE pass applies the index from pass 1; set false to only update state for the next run
 
 color_space_conversion: 

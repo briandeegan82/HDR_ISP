@@ -78,7 +78,12 @@ _DEMOSAIC_ALGORITHMS = [
     "bilinear", "malvar", "vng_opt", "hamilton_adams", "ppg", "ahd", "lmmse",
 ]
 _TONE_MAPPERS = [
-    "reinhard_integer", "aces", "aces_integer", "hable", "hable_integer", "hdr_durand",
+    "reinhard_integer",
+    "aces",
+    "aces_integer",
+    "hable",
+    "hable_integer",
+    "durand",  # YAML params live under top-level hdr_durand:
 ]
 _GAMMA_CURVES = ["srgb", "gamma"]
 _AWB_ALGORITHMS = ["grey_world", "norm_2", "pca"]
@@ -1412,6 +1417,9 @@ class ISPTuningApp:
     def _load_config_path(self, path: Path) -> None:
         paths = pipeline_config_paths(path)
         self.working_config = load_merged_yaml(paths)
+        tm_fix = self.working_config.get("tone_mapping")
+        if isinstance(tm_fix, dict) and tm_fix.get("tone_mapper") == "hdr_durand":
+            tm_fix["tone_mapper"] = "durand"
         self.config_path = path.resolve()
         self.save_path = path.resolve()
         self._modified = False

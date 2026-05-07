@@ -7,7 +7,7 @@ Input: Linear data from decompanding (before demosaic) or CCM (after demosaic).
 Output: uint16 for pipeline (gamma expects 16-bit input).
 
 Supported tone_mapper values and their config sections:
-  durand            -> hdr_durand
+  durand            -> hdr_durand   (legacy alias: hdr_durand → treated as durand)
   aces              -> aces
   reinhard_integer  -> reinhard_integer (or legacy integer_tmo section)
   aces_integer      -> aces_integer
@@ -47,6 +47,9 @@ class ToneMapping:
         self.output_max = 2**pipeline_rgb_bits - 1
         self.is_save = pipeline_self.tone_mapping["is_save"]
         self.method = pipeline_self.tone_mapping["tone_mapper"]
+        # Legacy / GUI mistake: section is hdr_durand but mapper key must be durand.
+        if self.method == "hdr_durand":
+            self.method = "durand"
         self.enable = pipeline_self.tone_mapping["is_enable"]
         self.platform = pipeline_self.platform
         self.sensor_info = pipeline_self.sensor_info
@@ -126,8 +129,9 @@ class ToneMapping:
             self._use_integer_tmo = True
         else:
             raise ValueError(
-                f"Unknown tone mapping method: {self.method}. "
-                "Supported: 'durand', 'aces', 'reinhard_integer', 'aces_integer', 'hable', 'hable_integer'."
+                f"Unknown tone mapping method: {self.method!r}. "
+                "Supported: 'durand' (YAML section hdr_durand), 'aces', "
+                "'reinhard_integer', 'aces_integer', 'hable', 'hable_integer'."
             )
         self._use_integer_tmo = getattr(self, "_use_integer_tmo", False)
 

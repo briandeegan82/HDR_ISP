@@ -117,8 +117,8 @@ class AutoExposure:
         Conversion of an Image into Greyscale Image
         """
         max_ch = float(self._max_channel_after_shift())
-        # Rec. 601 luma weights
-        grey = np.dot(img[..., :3].astype(np.float64), [0.299, 0.587, 0.114])
+        # BT.709 luma weights (matches boltISP AGC luma computation)
+        grey = np.dot(img[..., :3].astype(np.float64), [0.2126, 0.7152, 0.0722])
         grey_img = np.clip(grey, 0.0, max_ch)
         return grey_img, np.average(grey_img, axis=(0, 1))
 

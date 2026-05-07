@@ -46,6 +46,30 @@ class ColorSpaceConversion:
         # Initialize debug logger
         self.logger = get_debug_logger("ColorSpaceConversion", config=self.platform)
 
+    def _apply_luma_preserving_saturation(self, rgb_2d: np.ndarray) -> np.ndarray:
+        """Luma-preserving saturation in linear RGB space.
+
+        Implements c' = L + (c - L) * S, where L is BT.709 luma.
+        This matches boltISP's CCM-stage saturation formula and is
+        mathematically equivalent to chroma scaling without hue shift.
+
+        Parameters
+        ----------
+        rgb_2d : (3, N) float64 array of R/G/B channel rows (0–255 range).
+
+        Returns
+        -------
+        (3, N) float64 array with saturation applied.
+        """
+        gain = float(self.parm_cse["saturation_gain"])
+        r, g, b = rgb_2d[0], rgb_2d[1], rgb_2d[2]
+        luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        out = np.empty_like(rgb_2d)
+        out[0] = luma + (r - luma) * gain
+        out[1] = luma + (g - luma) * gain
+        out[2] = luma + (b - luma) * gain
+        return np.clip(out, 0.0, 255.0)
+
     def rgb_to_yuv_8bit(self) -> UInt8Image:
         """
         RGB-to-YUV Colorspace conversion 8bit
@@ -67,8 +91,17 @@ class ColorSpaceConversion:
         # make nx3 2d matrix of image
         mat_2d = self.img.reshape((self.img.shape[0] * self.img.shape[1], 3))
 
+        # Color saturation: apply luma-preserving blend before RGB→YUV.
+        # Formula: c' = L + (c - L) * S  (matches boltISP's CCM-stage saturation).
+        # This replaces the old U/V scaling approach which is not equivalent.
+        mat_2d_float = mat_2d.astype(np.float64)
+        if self.parm_cse["is_enable"]:
+            mat_2d_float = self._apply_luma_preserving_saturation(
+                mat_2d_float.transpose()
+            ).transpose()
+
         # convert to 3xn for matrix multiplication
-        mat2d_t = mat_2d.transpose()
+        mat2d_t = mat_2d_float.transpose()
 
         # convert to YUV
         yuv_2d = np.matmul(self.rgb2yuv_mat, mat2d_t)
@@ -76,16 +109,6 @@ class ColorSpaceConversion:
         # convert image with its provided bit_depth
         yuv_2d = np.float64(yuv_2d) / (2**8)
         yuv_2d = np.where(yuv_2d >= 0, np.floor(yuv_2d + 0.5), np.ceil(yuv_2d - 0.5))
-
-        # color saturation enhancment block:
-        if self.parm_cse['is_enable']:
-            gain = self.parm_cse['saturation_gain']
-
-            yuv_2d[1, :] = yuv_2d[1, :] * gain
-            yuv_2d[2, :] = yuv_2d[2, :] * gain
-
-
-
 
         # black-level/DC offset added to YUV values
         yuv_2d[0, :] = 2 ** (self.bit_depth / 2) + yuv_2d[0, :]
