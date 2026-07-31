@@ -338,7 +338,39 @@ class BrilliantISP:
         if self.tone_mapper == "hable_integer":
             self.param_hable_integer = c_yaml.get("hable_integer", {})
 
+        # Snapshot the config values that a single frame mutates transiently, so
+        # reusing one instance across a batch cannot leak state between frames.
+        # Excludes intentional 3A carryover (WB gains / gain index), which is
+        # threaded frame-to-frame by load_3a_statistics().
+        self._frame_reset_baseline = {
+            "sensor_wh": (self.sensor_info["width"], self.sensor_info["height"]),
+            "yuv_is_enable": self.parm_yuv["is_enable"],
+            "scale_is_debug": self.parm_sca.get("is_debug", False),
+        }
+
         # add rgb_output_conversion module
+
+    def _reset_transient_frame_state(self) -> None:
+        """
+        Restore config that gets mutated in place while processing a frame back to
+        its as-configured baseline, so each frame is processed independently when a
+        BrilliantISP instance is reused across many frames.
+
+        Covers: sensor width/height (overwritten by RAW-size shape inference in
+        load_raw), YUV is_enable (cleared by the YUV module when the output is RGB),
+        and scale is_debug. Intentional 3A carryover is deliberately not reset here.
+        """
+        baseline = getattr(self, "_frame_reset_baseline", None)
+        if baseline is None or self.sensor_info is None:
+            return
+        w, h = baseline["sensor_wh"]
+        self.sensor_info["width"] = w
+        self.sensor_info["height"] = h
+        if self.c_yaml is not None:
+            self.c_yaml["sensor_info"]["width"] = w
+            self.c_yaml["sensor_info"]["height"] = h
+        self.parm_yuv["is_enable"] = baseline["yuv_is_enable"]
+        self.parm_sca["is_debug"] = baseline["scale_is_debug"]
 
     def load_raw(self, byte_order: ByteOrder = "little") -> None:
         """
@@ -350,6 +382,8 @@ class BrilliantISP:
         """
         if self.platform is None or self.sensor_info is None:
             raise RuntimeError("Configuration must be loaded before loading RAW input.")
+        # Clear any per-frame state left by a previous frame before deriving this one.
+        self._reset_transient_frame_state()
         # Load raw image file information
         path_object = Path(self.data_path, self.raw_file)
         raw_path = str(path_object.resolve())
@@ -1031,6 +1065,14 @@ class BrilliantISP:
         self.sensor_info["bayer_pattern"] = self.c_yaml["sensor_info"][
             "bayer_pattern"
         ] = sensor_info["bayer_pattern"]
+
+        # Keep the per-frame reset baseline in sync so the new dimensions survive
+        # _reset_transient_frame_state() on the next frame.
+        if getattr(self, "_frame_reset_baseline", None) is not None:
+            self._frame_reset_baseline["sensor_wh"] = (
+                self.sensor_info["width"],
+                self.sensor_info["height"],
+            )
 
         if update_blc_wb:
             black_level = sensor_info.get("black_level")
