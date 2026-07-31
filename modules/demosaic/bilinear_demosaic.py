@@ -29,7 +29,9 @@ class BilinearDemosaic:
         """Convolve channel & mask with kernel and normalize safely."""
         num = convolve(channel_masked, kernel, mode=mode)
         den = convolve(mask,           kernel, mode=mode)
-        return np.where(den > 0, num / den, 0.0)
+        out = np.zeros_like(num)
+        np.divide(num, den, out=out, where=den > 0)
+        return out
 
     def apply_bilinear(self) -> np.ndarray:
         raw = self.img
