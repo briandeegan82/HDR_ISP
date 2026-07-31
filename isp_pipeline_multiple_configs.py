@@ -142,7 +142,7 @@ def process_with_config(config_path, output_suffix=""):
         _log.info(f"{'='*60}")
         
         # Initialize ISP with the configuration
-        brilliant_isp = BrilliantISP(RAW_DATA, config_path, output_path)
+        brilliant_isp = BrilliantISP(RAW_DATA, config_path, outFileName="", output_path=output_path)
         
         # Execute the pipeline
         start_time = time.time()

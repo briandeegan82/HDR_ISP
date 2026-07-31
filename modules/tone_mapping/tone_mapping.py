@@ -170,9 +170,8 @@ class ToneMapping:
         if self.enable is False:
             # Passthrough: return input in pipeline format (uint16)
             if self.tone_mapping_before_demosaic:
-                return (
-                    self.img_orig.astype(np.float32) * (self.output_max / self.input_max)
-                ).astype(np.uint16)
+                scaled = self.img_orig.astype(np.float32) * (self.output_max / self.input_max)
+                return np.clip(scaled, 0, self.output_max).astype(np.uint16)
             return self.img_orig
 
         if self._use_integer_tmo:
@@ -189,7 +188,9 @@ class ToneMapping:
         if self.tone_mapping_before_demosaic is False:
             img_out = self.combine_luminance(img_out)
         self.save()
-        img_out_int = (img_out * self.output_max).astype(np.uint16)
+        # Chromaticity recombination can push saturated channels above 1.0; clip
+        # before the uint16 cast to avoid wraparound on bright colored pixels.
+        img_out_int = np.clip(img_out * self.output_max, 0, self.output_max).astype(np.uint16)
         return img_out_int
    
 

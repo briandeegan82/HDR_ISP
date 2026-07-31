@@ -858,8 +858,12 @@ class BrilliantISP:
             # If both RGB_C and YUV_C are enabled. Brilliant-ISP will generate
             # an output but it will be an invalid image.
             short_names = self.platform.get("short_output_names", False)
+            # Derive the decorated name into a local; mutating self.outFileName here
+            # accumulated the suffix on every frame when the instance is reused across
+            # a batch, eventually overflowing the filesystem name limit.
+            out_file_name = self.outFileName
             if not short_names:
-                self.outFileName = self.outFileName + "TM_" + str(self.tone_mapper) + "_s_" + str(self.parm_cse['saturation_gain']) + "_CCM_" + str(self.parm_ccm['is_enable']) + "_Before_Demosaic_" + str(self.tone_mapping_before_demosaic)
+                out_file_name = out_file_name + "TM_" + str(self.tone_mapper) + "_s_" + str(self.parm_cse['saturation_gain']) + "_CCM_" + str(self.parm_ccm['is_enable']) + "_Before_Demosaic_" + str(self.tone_mapping_before_demosaic)
 
             self.last_output_rgb = np.asarray(out_rgb).copy()
 
@@ -901,7 +905,7 @@ class BrilliantISP:
                 except Exception as e:
                     self.logger.warning(f"Failed to plot histograms: {e}")
 
-            util.save_pipeline_output(self.out_file, out_rgb, self.c_yaml, self.outFileName, self.output_path, short_names=short_names)
+            util.save_pipeline_output(self.out_file, out_rgb, self.c_yaml, out_file_name, self.output_path, short_names=short_names)
 
     def execute(
         self,

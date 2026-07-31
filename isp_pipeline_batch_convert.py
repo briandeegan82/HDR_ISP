@@ -61,7 +61,7 @@ def process_single_raw_file(raw_file_path: str, config_path: str) -> None:
     config_file = os.path.join(file_dir, f"{file_stem}-configs.yml")
     
     # Initialize ISP with the file's directory and output to convert folder
-    brilliant_isp = BrilliantISP(file_dir, config_path, convert_dir)
+    brilliant_isp = BrilliantISP(file_dir, config_path, outFileName="", output_path=convert_dir)
     assert brilliant_isp.c_yaml is not None
     
     # Set generate_tv flag to false

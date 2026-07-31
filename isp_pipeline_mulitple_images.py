@@ -70,7 +70,7 @@ def video_processing(input_path: str, output_path: str) -> None:
     _log.info(f"Input directory: {input_path}")
     _log.info(f"Output directory: {output_path}")
 
-    brilliant_isp = BrilliantISP(input_path, CONFIG_PATH, output_path)
+    brilliant_isp = BrilliantISP(input_path, CONFIG_PATH, outFileName="", output_path=output_path)
     assert brilliant_isp.c_yaml is not None
 
     # set generate_tv flag to false
@@ -104,7 +104,7 @@ def dataset_processing(input_path: str, output_path: str) -> None:
         if (Path(input_path, x).suffix in [".raw", ".NEF", ".dng", ".nef"])
     ]
 
-    brilliant_isp = BrilliantISP(input_path, default_config, output_path)
+    brilliant_isp = BrilliantISP(input_path, default_config, outFileName="", output_path=output_path)
     assert brilliant_isp.c_yaml is not None
 
     # set generate_tv flag to false
